@@ -7936,6 +7936,48 @@ public List<Integer> findSubstring(String s, String[] words) {
 
 
 
+## [01455. 检查单词是否为句中其他单词的前缀](https://leetcode.cn/problems/check-if-a-word-occurs-as-a-prefix-of-any-word-in-a-sentence/)
+
+```java
+public int isPrefixOfWord(String sentence, String searchWord) {
+    if (sentence.length() == 0 || searchWord.length() == 0) {
+        return -1;
+    }
+    int count = 1;
+    int index = 0;
+    Boolean isMatch = true;
+    for (int i = 0; i < sentence.length(); i++) {
+        if (sentence.charAt(i) == ' ') {
+            count++;
+            index = 0;
+            isMatch = true;
+            continue;
+        }
+        if (!isMatch) {
+            continue;
+        }
+        if (sentence.charAt(i) == searchWord.charAt(index)) {
+            if (index == searchWord.length() - 1) {
+                return count;
+            }
+            index++;
+        } else {
+            isMatch = false;
+        }
+    }
+    return -1;
+}
+```
+
+题目已经写好了构造函数，限制了开头字母不能是空格，所以说就可以放心大胆设置下标为0开始即就是第一个单词的开始。
+
+定义count用来表示当前遍历到的是第几个单词，index代表searchWord检索词当前检索到的位置，isMatch表示在sentence当前单词中，是否已经出现与检索词不匹配的字母。
+
+1. 每次遍历到`' '`空格，就需要把count++，并把index和isMatch重置
+2. 具体看代码吧，很清楚
+
+
+
 
 
 
@@ -14450,61 +14492,77 @@ private int binarySearchRight2(long[] sorted, lont target, int start, int end) {
 
 
 
+# Stable Matching
 
+```typescript
+import "./styles.css";
+import axios from 'axios';
+import React, { useState, useEffect } from 'react'
 
-
-
-
-
-
-
-
-
-
-
-
-
-# LeetCode每日打卡
-
-## [01455. 检查单词是否为句中其他单词的前缀](https://leetcode.cn/problems/check-if-a-word-occurs-as-a-prefix-of-any-word-in-a-sentence/)
-
-```java
-public int isPrefixOfWord(String sentence, String searchWord) {
-    if (sentence.length() == 0 || searchWord.length() == 0) {
-        return -1;
-    }
-    int count = 1;
-    int index = 0;
-    Boolean isMatch = true;
-    for (int i = 0; i < sentence.length(); i++) {
-        if (sentence.charAt(i) == ' ') {
-            count++;
-            index = 0;
-            isMatch = true;
-            continue;
-        }
-        if (!isMatch) {
-            continue;
-        }
-        if (sentence.charAt(i) == searchWord.charAt(index)) {
-            if (index == searchWord.length() - 1) {
-                return count;
-            }
-            index++;
-        } else {
-            isMatch = false;
-        }
-    }
-    return -1;
+interface Todo {
+  userId: number;
+  id: number;
+  title: string;
+  completed: boolean;
 }
+
+export default function App() {
+  const [filteredTodos, setFilteredTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [searchField, setSearchField] = useState<string>("");
+  console.log(searchField);
+  useEffect(() => {
+    axios.get('https://jsonplaceholder.typicode.com/todos?_limit=10&_sort=id&_order=desc')
+      .then(response => {
+        setTodos(response.data);
+      })
+      .catch(error => {
+        console.log(error);
+      });
+  }, []);
+
+  const searchFieldHandler = (event:React.ChangeEvent<HTMLInputElement>) => {
+    setSearchField(event.target.value.toLowerCase())
+  }
+
+  useEffect(() => {
+    const newFilteredTodos = todos.filter((todo) => {return todo.title.toLowerCase().includes(searchField)})
+    setFilteredTodos(newFilteredTodos)
+  }, [todos, searchField])
+  
+  return (
+    <div className="App">
+      <input type="search" onChange={searchFieldHandler}/>
+      <ul>
+        {filteredTodos.map((filteredTodo) => (
+          <li key={filteredTodo.id}>
+            <ul>
+              <li>id:{filteredTodo.id}</li>
+              <li>UserId:{filteredTodo.userId}</li>
+              <li>title:{filteredTodo.title}</li>
+              <li>completed:{filteredTodo.completed ? "yes" : "no"}</li>
+            </ul>
+          </li>
+        ))}
+      </ul>
+      
+    </div>
+  );
+}
+
 ```
 
-题目已经写好了构造函数，限制了开头字母不能是空格，所以说就可以放心大胆设置下标为0开始即就是第一个单词的开始。
 
-定义count用来表示当前遍历到的是第几个单词，index代表searchWord检索词当前检索到的位置，isMatch表示在sentence当前单词中，是否已经出现与检索词不匹配的字母。
 
-1. 每次遍历到`' '`空格，就需要把count++，并把index和isMatch重置
-2. 具体看代码吧，很清楚
+
+
+
+
+
+
+
+
+
 
 
 
