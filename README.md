@@ -3158,7 +3158,7 @@ public class Solution18 {
 
 
 
-# 动态规划
+# Dynamic Programming
 
 ## ----背包问题
 
@@ -5896,7 +5896,7 @@ public class Solution43 {
 
 
 
-# 单调栈
+# Monotonic Stack
 
 **通常是一维数组，要寻找任一个元素的右边或者左边第一个比自己大或者小的元素的位置，此时我们就要想到可以用单调栈了**。
 
@@ -6448,21 +6448,7 @@ public int maximalRectangle(char[][] matrix) {
 
 
 
-
-
-# -----------分割线------------新的开始
-
-到目前为止代码随想录的150道精选题已经全部完成，可以在之后做沉淀，距离秋招还有3个月，尽可能多做一些题目吧！
-
-
-
-
-
-
-
-
-
-# 字符串&数组
+# String & Array
 
 ## [0003. 无重复字符的最长子串](https://leetcode-cn.com/problems/longest-substring-without-repeating-characters/)
 
@@ -7982,7 +7968,7 @@ public int isPrefixOfWord(String sentence, String searchWord) {
 
 
 
-# 链表
+# Linked List
 
 ## [0025. K 个一组翻转链表](https://leetcode-cn.com/problems/reverse-nodes-in-k-group/)
 
@@ -8952,7 +8938,7 @@ public int findDuplicate(int[] nums) {
 
 
 
-# 双指针
+# Two pointers
 
 ## [0015. 三数之和](https://leetcode-cn.com/problems/3sum/)
 
@@ -9264,7 +9250,7 @@ public int networkDelayTime(int[][] times, int n, int k) {
 
 
 
-# 二分查找
+# Binary Search
 
 ## [0240. 搜索二维矩阵 II](https://leetcode.cn/problems/search-a-2d-matrix-ii/)
 
@@ -14572,7 +14558,7 @@ export default function App() {
 
 
 
-# LeetCode周赛
+# LeetCode Weekly Contests
 
 ## 308
 
