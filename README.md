@@ -4088,36 +4088,30 @@ public class Solution16 {
 
 
 
-## ----打家劫舍
+## House Robber
 
-## [0198. 打家劫舍](https://leetcode-cn.com/problems/house-robber/)
+## [198. House Robber](https://leetcode.com/problems/house-robber/)
 
 ```java
-//0198.打家劫舍
-public class Solution17 {
+//0198. House Robber
+public class HouseRobber {
     public int rob(int[] nums) {
-        if (nums.length == 1){
-            return nums[0];
+        int n = nums.length;
+        // Two states: 0 represents not rob and 1 represents rob
+        int nState = 1 << 1;
+        int[] dp = new int[nState];
+        for (int house = 0; house < n; house++) {
+            int[] dp_new = new int[nState];
+            dp_new[0] = Math.max(dp[1], dp[0]);
+            dp_new[1] = dp[0] + nums[house];
+            dp = dp_new;
         }
-        int[] dp = new int[nums.length+1];
-        dp[0] = 0;
-        dp[1] = nums[0];
-        dp[2] = nums[1];
-        for (int i = 3; i <=nums.length; i++){
-            dp[i] = Math.max(dp[i - 2], dp[i - 3]) + nums[i-1];
-        }
-        return dp[dp.length - 1] >= dp[dp.length - 2] ? dp[dp.length - 1] : dp[dp.length - 2];
+        return Math.max(dp[0], dp[1]);
     }
 }
 ```
 
-**思路**：
-
-因为不能打劫相邻的住户，所以一定是要跳过一个住户去打劫，那么初步判断递推公式为`dp[i] = dp[i - 2] + nums[i - 1]`，这里是nums[i - 1]的原因是dp数组有个空位dp[0]，nums[0]已经对应的是dp[1]了。
-
-dp[i]最终的递推其实有两个分支，一个是由dp[i - 3]推出，所以最终`dp[i] = Math.max(dp[i - 2], dp[i - 3]) + nums[i - 1]`。
-
-
+We consider the houses as flow, the robber need to check if each house is good for robbing, so each house have two states, 0 represents not robbed and 1 represents robbed.
 
 
 
@@ -5891,13 +5885,651 @@ public class Solution43 {
 
 
 
+# Bit Masks & DP
+
+## [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
+
+```java
+    // since target <= 15, we can assume that the result cannot exceed 15, INF is like a maximum limit here, it can be any number greater than 15
+    static int N = 15, INF = 20;
+    static int[] f = new int[1 << N];
+    public int minStickers(String[] ss, String t) {
+        int m = t.length(), mask = 1 << m;
+        Arrays.fill(f, INF);
+        f[0] = 0;
+        for (int s = 0; s < mask; s++) {
+            if (f[s] == INF) continue;
+            // start from state 0, try different stickers, after each iteration, we can get an optimum states array depends on f[ns] = Math.min(f[ns], f[s] + 1);
+            for (String str : ss) {
+                int ns = s, len = str.length();
+                for (int i = 0; i < len; i++) {
+                    int c = str.charAt(i) - 'a';
+                    for (int j = 0; j < m; j++) {
+                        // do right shift on ns, ns = s, and is the current iteration's states, check if the j th state is already satisfied
+                        if (t.charAt(j) - 'a' == c && (((ns >> j) & 1) == 0)) {
+                            // if satisfied, change the j th state to satisified
+                            ns |= (1 << j);
+                            break;
+                        }
+                    }
+                }
+                f[ns] = Math.min(f[ns], f[s] + 1);
+            }
+        }
+        return f[mask - 1] == INF ? -1 : f[mask - 1];
+    }
+```
 
 
 
+## [1125. Smallest Sufficient Team](https://leetcode.com/problems/smallest-sufficient-team/)
+
+```java
+int max_people;
+
+public int[] smallestSufficientTeam(String[] req_skills, List<List<String>> people) {
+    int skillLen = req_skills.length;
+    max_people = skillLen + 1;
+    int[] states = new int[1 << skillLen];
+    List<Set<Integer>> chonsen_people_sets = new ArrayList<>(Collections.nCopies((1 << skillLen), new HashSet<>()));
+    Arrays.fill(states, max_people);
+    states[0] = 0;
+    for (int s = 0; s < states.length; s++) {
+        // no way to here, contiune to next
+        if (states[s] == max_people) continue;
+        Set<Integer> current_people_set = chonsen_people_sets.get(s);
+        for (int p = 0; p < people.size(); p++) {
+            // if the people is already chosen, continue
+            if (current_people_set.contains(p)) continue;
+            Set<Integer> next_people_set = new HashSet<>(current_people_set);
+            int temp_s = s;
+            List<String> p_skills = people.get(p);
+            for (int i = 0; i < p_skills.size(); i++) {
+                String p_skill = p_skills.get(i);
+                for (int j = 0; j < skillLen; j++) {
+                    if (req_skills[j].equals(p_skill) && ((temp_s >> j) & 1) == 0) {
+                        temp_s |= (1 << j);
+                        break;
+                    }
+                }
+            }
+            // dynamically get the minimum number of people
+            if (temp_s != s && states[temp_s] > states[s] + 1) {
+                states[temp_s] = states[s] + 1;
+                next_people_set.add(p);
+                chonsen_people_sets.set(temp_s, next_people_set);
+            }
+        }
+    }
+    Set<Integer> res_set = chonsen_people_sets.get((1 << skillLen) - 1);
+    int length = res_set.size();
+    int[] res = new int[length];
+    int index = 0;
+    for (Integer p : res_set) {
+        res[index++] = p;
+    }
+    return res;
+}
+```
 
 
 
+## [1349. Maximum Students Taking Exam](https://leetcode.com/problems/maximum-students-taking-exam/)
 
+```java
+//1349. Maximum Students Taking Exam
+public class MaximumStudentsTakingExam {
+    char[][] seats_global;
+    int m, n;
+
+    public int maxStudents(char[][] seats) {
+        // The current row's elements only affected by the previous row's elements, and the current row's elements
+        // dp[i][p] means maximum number of students that can take the exam together without any cheating being possible by the i-th row, and we choose pattern p at the i-th row
+        // dp[i][p] = max(dp[i-1][t]), t range in [0, maximum pattern] (for t = 0, 1, ..., 2^N), not conflicts with p
+        seats_global = seats;
+        m = seats.length;
+        n = seats[0].length;
+        int[] dp = new int[(1 << n)];
+        for (int p = 0; p < (1 << n); p++) {
+            if (isSameRowNoConflicts(p, 0)) {
+                dp[p] = countSeats(p);
+            }
+        }
+        for (int row = 1; row < m; row++) {
+            int[] dp_prev = Arrays.copyOf(dp, dp.length);
+            Arrays.fill(dp, 0);
+            for (int cur_state = 0; cur_state < (1 << n); cur_state++) {
+                // check if in current row has conflicts, for example: 11001, the 1-st and 2-nd seats have conflicts
+                if (!isSameRowNoConflicts(cur_state, row)) continue;
+                // update dp[cur_state]
+                for (int prev_state = 0; prev_state < (1 << n); prev_state++) {
+                    // check if in previous row has conflicts
+                    if (!isSameRowNoConflicts(prev_state, row - 1)) continue;
+                    /*
+                        check if two cross rows have conflicts, for example:
+                        1 0 0
+                        0 1 0
+                        1-st row's 1-st element have conflict with 2-nd row's 2-nd element
+                    */
+                    if (!isPrevRowNoConflicts(cur_state, prev_state)) continue;
+                    dp[cur_state] = Math.max(dp_prev[prev_state] + countSeats(cur_state), dp[cur_state]);
+                }
+            }
+        }
+        int res = 0;
+        for (int p = 0; p < (1 << n); p++) {
+            res = Math.max(res, dp[p]);
+        }
+        return res;
+    }
+
+    /*count the number of 1 of a binary number*/
+    private int countSeats(int cur_state) {
+        int res = 0;
+        while (cur_state > 0) {
+            res += cur_state % 2;
+            cur_state /= 2;
+        }
+        return res;
+    }
+
+    private boolean isPrevRowNoConflicts(int cur_state, int prev_state) {
+        int[] temp_cur = new int[n];
+        int[] temp_prev = new int[n];
+        for (int i = 0; i < n; i++) {
+            temp_cur[i] = cur_state % 2;
+            temp_prev[i] = prev_state % 2;
+            cur_state /= 2;
+            prev_state /= 2;
+        }
+        for (int i = 0; i < n; i++) {
+            // if current seat and top-left seat are both occupied
+            if (temp_cur[i] == 1 && i - 1 >= 0 && temp_prev[i - 1] == 1) {
+                return false;
+            }
+            // if current seat and top-right seat are both occupied
+            if (temp_cur[i] == 1 && i + 1 < n && temp_prev[i + 1] == 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isSameRowNoConflicts(int cur_state, int row) {
+        int[] temp = new int[n];
+        for (int i = 0; i < n; i++) {
+            temp[i] = cur_state % 2;
+            cur_state /= 2;
+        }
+        for (int i = 0; i < n; i++) {
+            // if it is a broken seat, we can not set the pattern to 1 means someone seat there
+            if (temp[i] == 1 && seats_global[row][i] == '#') {
+                return false;
+            }
+            // It's left position cannot seat
+            if (temp[i] == 1 && i - 1 >= 0 && temp[i - 1] == 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+
+
+## [1434. Number of Ways to Wear Different Hats to Each Other](https://leetcode.com/problems/number-of-ways-to-wear-different-hats-to-each-other/)
+
+```
+Way1:
+// state: binary type, i-th bit represents if the i-th hat has been taken
+// dp[state]: number of ways for this case
+for people in [0, n]:
+	for state in [00...00, 11...11]:
+		for hat in HatsForThisPeople:
+			if hat has been taken in state: continue
+			dp_new[state+hat] += dp[state]
+ans = sum(dp[state]) for those states contain n bit 1
+// But the time complexity is big
+
+Way2:
+// i-th bit represents if the i-th people has taken a hat
+// dp[state]: number of ways for this case
+for hats in [1, 40]:
+	for state in [00...00, 11...11]:
+		for people in PersonForThisHat:
+			if people has taken hat in this state: continue
+			dp_new[state+people] += dp[state]
+ans = dp[state] which state full filled with 1
+```
+
+```java
+// 1434. Number of Ways to Wear Different Hats to Each Other
+public class NumberOfWays2WearDifferentHats2EachOther {
+    int max_nHats = 40;
+    int n;
+    List<List<Integer>> hats;
+
+    public int numberWays(List<List<Integer>> hats) {
+        // i-th bit represents if the i-th people has taken a hat
+        // dp[state]: number of ways for this case
+        n = hats.size();
+        int nState = 1 << n;
+        long[] dp = new long[nState];
+        // no one take a hat is also one way
+        dp[0] = 1;
+        Map<Integer, Set<Integer>> personForThisHat = new HashMap<>();
+        for (int p = 0; p < n; p++) {
+            List<Integer> hatsForThisPerson = hats.get(p);
+            for (Integer hat : hatsForThisPerson) {
+                Set<Integer> person = personForThisHat.getOrDefault(hat, new HashSet<>());
+                if (!person.contains(p)) person.add(p);
+                personForThisHat.put(hat, person);
+            }
+        }
+        for (int hat = 1; hat <= 40; hat++) {
+            long[] dp_new = Arrays.copyOf(dp, dp.length);
+            for (int state = 0; state < nState; state++) {
+                Set<Integer> person = personForThisHat.getOrDefault(hat, new HashSet<>());
+                for (Integer p : person) {
+                    if (hasHat(state, p)) continue;
+                    dp_new[state + (1 << p)] = (dp_new[state + (1 << p)] + dp[state]) % (long) (1e9 + 7);
+                }
+            }
+            dp = dp_new;
+        }
+        return (int) dp[nState - 1];
+    }
+
+    private boolean hasHat(int state, int p) {
+        // bitwise shift operation
+        return ((state >> p) & 1) == 1;
+    }
+}
+```
+
+
+
+## [1655. Distribute Repeating Integers](https://leetcode.com/problems/distribute-repeating-integers/)
+
+```
+11010 & 11011 = 11010  => 11011 = 1 + 2 + 0 + 8 + 16 = 27
+11001 & 11011 = 11001
+11000 & 11011 = 11000
+10111 & 11011 = 10011
+10010 & 11011 = 10010
+10001 & 11011 = 10001
+10000 & 11011 = 10000
+01111 & 11011 = 01011
+01010 & 11011 = 01010
+01001 & 11011 = 01001
+01000 & 11011 = 01000
+00111 & 11011 = 00011
+00010 & 11011 = 00010
+00001 & 11011 = 00001
+00000 =》 00000
+// following iteration can eliminate one '1' each time, it represents its previous state iterately
+// common use in bit mask
+subset = (subset - 1) & state_current
+```
+
+The core rule is:
+
+1. The outter-most loop is for iterating the $value$ array
+2. Consider state $s$, we iterate each of its previous state, you can refer to the above steps
+3. Check its previous state is valid for 
+
+```java
+// 1655. Distribute Repeating Integers
+public class DistributeRepeatingIntegers {
+    int n, m;
+    int[] quantity;
+
+    public boolean canDistribute(int[] nums, int[] quantity) {
+        this.quantity = quantity;
+        // state: m bit binary, 0 represents i-th customer's order have not completed, 1 represents completed
+        // dp[s] means if it is possible to distribute nums for state s. 1 represents possible, 0 represents impossible
+        // dp_new[s+(1<<p)] = dp[s] == 1 ? 1 : 0
+        n = nums.length;
+        m = quantity.length;
+        int[] dp = new int[1 << m];
+        dp[0] = 1;
+        // Firstly refactor nums array to count[i] number of i-th value, using Map to store
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            Integer count = counts.getOrDefault(nums[i], 0);
+            count++;
+            counts.put(nums[i], count);
+        }
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            Integer nValue = entry.getValue();
+            int[] dp_new = Arrays.copyOf(dp, dp.length);
+            for (int s = 1; s < (1 << m); s++) {
+                // Since we have use the number of value to satisfy previous state, we need to exclude them out
+                // So the inside loop should to iterate state from [1, current_s]
+                // s = ((s - 1) & s) can eliminate one '1' each time, it represents its previous state iterately
+                for (int subset = s; subset > 0; subset = ((subset - 1) & s)) {
+                    if (dp[s - subset] != 1) continue;
+                    if (!isCountsSatisfyThisPerson(nValue, subset)) continue;
+                    dp_new[s] = 1;
+                }
+            }
+            dp = dp_new;
+        }
+        return dp[dp.length - 1] == 1;
+    }
+
+    private boolean isCountsSatisfyThisPerson(int nValue, int s) {
+        int tempValue = 0;
+        for (int i = 0; i < m; i++) {
+            if (s % 2 == 1) tempValue += quantity[i];
+            s /= 2;
+        }
+        return tempValue <= nValue;
+    }
+}
+```
+
+
+
+## [1659. Maximize Grid Happiness](https://leetcode.com/problems/maximize-grid-happiness/)
+
+```java
+// 1659. Maximize Grid Happiness
+public class MaximizeGridHappiness {
+    int m, n;
+    int introvertsCount, extrovertsCount;
+    int[][][][] dp = new int[6][7][7][243];
+
+    public int getMaxGridHappiness(int m, int n, int introvertsCount, int extrovertsCount) {
+        this.m = m;
+        this.n = n;
+        int res = 0;
+        int nState = (int) Math.pow(3, n);
+        // dp[i][x][y][s] means the maximum total happiness for person from row 0 to i in states s, and used intro ax x, used extro as y
+        // each bit has 3 state: 0 - no person, 1 - one introvert, 2 - one extrovert
+        for (int i = 0; i <= m; i++) {
+            for (int x = 0; x <= introvertsCount; x++) {
+                for (int y = 0; y <= extrovertsCount; y++) {
+                    for (int s = 0; s < nState; s++) {
+                        dp[i][x][y][s] = -1;
+                    }
+                }
+            }
+        }
+        dp[0][0][0][0] = 0;
+        for (int row = 1; row <= m; row++) {
+            for (int x = 0; x <= introvertsCount; x++) {
+                for (int y = 0; y <= extrovertsCount; y++) {
+                    for (int s_cur = 0; s_cur < nState; s_cur++) {
+                        int[] counts = countPeople(s_cur);
+                        int introverts = counts[0];
+                        int extroverts = counts[1];
+                        if (x < introverts || y < extroverts) continue;
+                        for (int s_prev = 0; s_prev < nState; s_prev++) {
+                            if (dp[row - 1][x - introverts][y - extroverts][s_prev] == -1) continue;
+                            dp[row][x][y][s_cur] = Math.max(dp[row][x][y][s_cur], dp[row - 1][x - introverts][y - extroverts][s_prev] + addVal(s_prev, s_cur));
+                        }
+                        if (row == m) res = Math.max(res, dp[row][x][y][s_cur]);
+                    }
+                }
+            }
+
+        }
+        return res;
+    }
+
+    // 1. extro: base + additional gain due to neighbours
+    // 2. intro: base - additional gain due to neighbours
+    // 3. additional gain for the extro in the last row
+    // 4. additional loss for the intro in the last row
+    private int addVal(int s_prev, int s_cur) {
+        int[] state_prev = new int[n];
+        int[] state_cur = new int[n];
+        int res = 0;
+        for (int i = 0; i < n; i++) {
+            state_prev[i] = s_prev % 3;
+            state_cur[i] = s_cur % 3;
+            s_prev /= 3;
+            s_cur /= 3;
+        }
+        for (int i = 0; i < n; i++) {
+            if (state_cur[i] == 1) {
+                res += 120;
+                if (i - 1 >= 0 && state_cur[i - 1] > 0) {
+                    res -= 30;
+                }
+                if (i + 1 < n && state_cur[i + 1] > 0) {
+                    res -= 30;
+                }
+                if (state_prev[i] > 0) {
+                    res -= 30;
+                }
+                if (state_prev[i] == 1) {
+                    res -= 30;
+                }
+                if (state_prev[i] == 2) {
+                    res += 20;
+                }
+            } else if (state_cur[i] == 2) {
+                res += 40;
+                if (i - 1 >= 0 && state_cur[i - 1] > 0) {
+                    res += 20;
+                }
+                if (i + 1 < n && state_cur[i + 1] > 0) {
+                    res += 20;
+                }
+                if (state_prev[i] > 0) {
+                    res += 20;
+                }
+                if (state_prev[i] == 1) {
+                    res -= 30;
+                }
+                if (state_prev[i] == 2) {
+                    res += 20;
+                }
+            }
+        }
+        return res;
+    }
+
+    private int[] countPeople(int state) {
+        int[] res = new int[2];
+        for (int i = 0; i < n; i++) {
+            if (state % 3 == 1) res[0]++;
+            if (state % 3 == 2) res[1]++;
+            state /= 3;
+        }
+        return res;
+    }
+}
+```
+
+
+
+## [1681. Minimum Incompatibility](https://leetcode.com/problems/minimum-incompatibility/)
+
+```java
+// 1681. Minimum Incompatibility
+public class MinimumIncompatibility {
+    int n;
+
+    public int minimumIncompatibility(int[] nums, int k) {
+        // m = C(n, n/k) - # of subsets containing duplicated elements
+        // constraint: 1. each subset cannot contain equal elements  2. there are limited number for subsets
+        // state: nums.length number of bits, 1 means has chosen, 0 means has not chosen
+        // pick k states from states[], st. union of them equals 11...111, find the minimum sum of incompatibility for all k states
+        // dp[i][s]: the minimum sum of incompatibility when picked elements form state s by considering the first i elements
+        n = nums.length;
+        int nState = 1 << n;
+        int[] dp = new int[nState];
+        Arrays.fill(dp, Integer.MAX_VALUE / 2);
+        dp[0] = 0;
+        // check if it is invalid inputs, the number of each value cannot exceed subsets length
+        Map<Integer, Integer> map = new HashMap<>();
+        for (int num : nums) {
+            int new_val = map.getOrDefault(num, 0) + 1;
+            map.put(num, new_val);
+        }
+        for (Map.Entry<Integer, Integer> entry: map.entrySet()) {
+            if (entry.getValue() > k) return -1;
+        }
+        List<Integer> states = new ArrayList<>();
+        List<Integer> incomps = new ArrayList<>();
+        // Find all k(here is n/k) 1-bits state from m(here is n) bits
+        int state = (1 << (n / k)) - 1;
+        while (state < (1 << n)) {
+            int incomp;
+            // check if contain duplicated value
+            if ((incomp = containDuplicated(nums, state)) != -1) {
+                states.add(state);
+                incomps.add(incomp);
+            }
+            int c = state & - state;
+            int r = state + c;
+            state = (((r ^ state) >> 2) / c) | r;
+        }
+        int m = states.size();
+        for (int i = 0; i < m; i++) { // pick from states
+            for (int s = nState - 1; s > 0; s--) {
+                if ((s & states.get(i)) == states.get(i)) {
+                    dp[s] = Math.min(dp[s], dp[s - states.get(i)] + incomps.get(i));
+                }
+            }
+        }
+        return dp[nState - 1];
+    }
+
+    private int containDuplicated(int[] nums, int state) {
+        List<Integer> temp = new ArrayList<>();
+        for (int i = 0; i < n; i ++) {
+            if (((state >> i) & 1) == 1) {
+                temp.add(nums[i]);
+            }
+        }
+        Collections.sort(temp);
+        for (int i = 1; i < temp.size(); i++) {
+            if (temp.get(i - 1).equals(temp.get(i))) {
+                return -1;
+            }
+        }
+        int incomp = temp.get(temp.size() - 1) - temp.get(0);
+        return incomp;
+    }
+}
+```
+
+
+
+## [1723. Find Minimum Time to Finish All Jobs](https://leetcode.com/problems/find-minimum-time-to-finish-all-jobs/)
+
+```java
+// 1723. Find Minimum Time to Finish All Jobs
+public class FindMinimumTime2FinishAllJobs {
+    int n, k;
+    public int minimumTimeRequired(int[] jobs, int k) {
+        // State: m bits, 0 means the first job has not been chosen, 1 means chosen
+        // dp[i][s]: the minimum maximum working time of any worker at state s if we use i workers
+        n = jobs.length;
+        this.k = k;
+        int nState = 1 << n;
+        int[] times = new int[nState];
+        for (int s = 0; s < nState; s++) {
+            times[s] = calWorkingTime(jobs, s);
+        }
+        int[][] dp = new int[k + 1][nState];
+        for (int i = 0; i <= k; i++) {
+            Arrays.fill(dp[i], Integer.MAX_VALUE);
+        }
+        dp[0][0] = 0;
+        for (int i = 1; i <= k; i++) {
+            for (int s_cur = 0; s_cur < nState; s_cur++) {
+                for (int subset = s_cur; subset > 0; subset = (subset - 1) & s_cur) {
+                    dp[i][s_cur] = Math.min(dp[i][s_cur], Math.max(dp[i - 1][s_cur - subset], times[subset]));
+                }
+            }
+        }
+
+        return dp[k][nState - 1];
+    }
+
+    private int calWorkingTime(int[] jobs, int state) {
+        int count = 0;
+        for (int i = 0; i < n; i++) {
+            if (state % 2 == 1) count += jobs[i];
+            state /= 2;
+        }
+        return count;
+    }
+}
+```
+
+
+
+## [1799. Maximize Score After N Operations](https://leetcode.com/problems/maximize-score-after-n-operations/)
+
+```java
+// 1799. Maximize Score After N Operations
+public class MaximizeScoreAfterNOperations {
+    int n;
+
+    public int maxScore(int[] nums) {
+        // state: n bits, if i-th bit is 1 means nums[i] is chosen, 0 means not chosen
+        // dp[i][s]: the maximum score you can receive for state s after performing i operations
+        n = nums.length / 2;
+        int nState = 1 << (n * 2);
+        int[][] dp = new int[n + 1][nState];
+        List<Integer> states = new ArrayList<>();
+        List<Integer> gcds = new ArrayList<>();
+        // Each time we choose two elements, so the state will update 2 bits each time
+        // Filtering all 2 1-bit in n * 2 bits
+        int state = (1 << 2) - 1;
+        while (state < nState) {
+            int gcd = calGCD(nums, state);
+            states.add(state);
+            gcds.add(gcd);
+            int c = state & -state;
+            int r = state + c;
+            state = (((r ^ state) >> 2) / c) | r;
+        }
+        for (int i = 1; i <= n; i++) {
+            for (int s_index = 0; s_index < states.size(); s_index++) {
+                for (int s = 0; s < nState; s++) {
+                    int subset = states.get(s_index);
+                    if ((s & subset) != subset) continue;
+                    dp[i][s] = Math.max(dp[i][s], dp[i - 1][s - subset] + gcds.get(s_index) * i);
+                }
+            }
+        }
+        return dp[n][nState - 1];
+    }
+
+    private int calGCD(int[] nums, int state) {
+        int a = -1, b = -1;
+        boolean isFirstFind = false;
+        for (int i = 0; i < n * 2; i++) {
+            if (((state >> i) & 1) != 1) continue;
+            if (!isFirstFind) {
+                a = nums[i];
+                isFirstFind = true;
+            } else {
+                b = nums[i];
+            }
+        }
+        if (b > a) {
+            int temp = a;
+            a = b;
+            b = temp;
+        }
+        while (b != 0) {
+            int remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+        return a;
+    }
+}
+```
 
 
 
@@ -9031,7 +9663,7 @@ X数之和，时间复杂度就是O(n^(X - 1))，最后的两个数的遍历可�
 
 
 
-# DFS & BFS
+# DFS
 
 ## [0200. 岛屿数量](https://leetcode-cn.com/problems/number-of-islands/)
 
@@ -9124,6 +9756,72 @@ void traverse(TreeNode root) {
 所以遍历过的岛屿，可以把值赋值为‘0’或者新增也可以赋值为'2'表示为已经遍历过的岛屿，这样就不会重复遍历了。
 
 
+
+## [1681. Minimum Incompatibility](https://leetcode.cn/problems/minimum-incompatibility/)
+
+```java
+// 1681. Minimum Incompatibility
+public class MinimumIncompatibility {
+    int n, k;
+    int res = Integer.MAX_VALUE;
+    int[] visited;
+
+    public int minimumIncompatibility(int[] nums, int k) {
+        n = nums.length;
+        this.k = k;
+        Map<Integer, Integer> map = new HashMap<>();
+        for (int num : nums) {
+            int new_val = map.getOrDefault(num, 0) + 1;
+            map.put(num, new_val);
+        }
+        for (Map.Entry<Integer, Integer> entry: map.entrySet()) {
+            if (entry.getValue() > k) return -1;
+        }
+        Arrays.sort(nums);
+        visited = new int[n];
+        visited[0] = 1;
+        dfs(nums, 0, 1, nums[0], nums[0], 0);
+        return res;
+    }
+
+    private void dfs(int[] nums, int cur_index, int count, int low, int high, int sumOfIncompatibilities) {
+        if (count == n / k) {
+            int j = 0;
+            while (j < n && visited[j] == 1) {
+                j++;
+            }
+            if (j == n) {
+                res = Math.min(res, sumOfIncompatibilities + high - low);
+                return;
+            } else {
+                visited[j] = 1;
+                dfs(nums, j, 1, nums[j], nums[j], sumOfIncompatibilities + high - low);
+                visited[j] = 0;
+            }
+        } else {
+            int last = -1;
+            for (int i = cur_index + 1; i < n; i++) {
+                if (visited[i] == 1) continue;
+                // the array is sorted, so no need to check all previous elements in the current subset
+                if (nums[i] == nums[cur_index]) continue;
+                if (last != -1 && nums[i] == last) continue;
+                visited[i] = 1;
+                dfs(nums, i, count + 1, low, nums[i], sumOfIncompatibilities);
+                visited[i] = 0;
+                last = nums[i];
+            }
+        }
+    }
+}
+```
+
+
+
+
+
+# BFS
+
+## [0200. 岛屿数量](https://leetcode-cn.com/problems/number-of-islands/)
 
 ### 解法二广度优先遍历BFS：
 
@@ -14413,6 +15111,20 @@ public int countSubarrays(int[] nums, int k) {
 
 # Bit Manipulation
 
+## Find all $k$ 1-bits from $n$ bits
+
+```java
+int state = (1 << k) - 1;
+while (state < (1 << n)) {
+    /* do someting here */
+    int c = state & - state;
+    int r = state + c;
+    state = (((r ^ state) >> 2) / c) | r;
+}
+```
+
+
+
 ## XOR
 
 ```
@@ -14430,269 +15142,6 @@ XOR_sum: xor_sum[i:k] = pre_xor_sum[k] ^ pre_xor_sum[i - 1]
 ```
 
 
-
-# Bit Masks & DP
-
-## [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
-
-```java
-    // since target <= 15, we can assume that the result cannot exceed 15, INF is like a maximum limit here, it can be any number greater than 15
-    static int N = 15, INF = 20;
-    static int[] f = new int[1 << N];
-    public int minStickers(String[] ss, String t) {
-        int m = t.length(), mask = 1 << m;
-        Arrays.fill(f, INF);
-        f[0] = 0;
-        for (int s = 0; s < mask; s++) {
-            if (f[s] == INF) continue;
-            // start from state 0, try different stickers, after each iteration, we can get an optimum states array depends on f[ns] = Math.min(f[ns], f[s] + 1);
-            for (String str : ss) {
-                int ns = s, len = str.length();
-                for (int i = 0; i < len; i++) {
-                    int c = str.charAt(i) - 'a';
-                    for (int j = 0; j < m; j++) {
-                        // do right shift on ns, ns = s, and is the current iteration's states, check if the j th state is already satisfied
-                        if (t.charAt(j) - 'a' == c && (((ns >> j) & 1) == 0)) {
-                            // if satisfied, change the j th state to satisified
-                            ns |= (1 << j);
-                            break;
-                        }
-                    }
-                }
-                f[ns] = Math.min(f[ns], f[s] + 1);
-            }
-        }
-        return f[mask - 1] == INF ? -1 : f[mask - 1];
-    }
-```
-
-
-
-## [1125. Smallest Sufficient Team](https://leetcode.com/problems/smallest-sufficient-team/)
-
-```java
-int max_people;
-
-public int[] smallestSufficientTeam(String[] req_skills, List<List<String>> people) {
-    int skillLen = req_skills.length;
-    max_people = skillLen + 1;
-    int[] states = new int[1 << skillLen];
-    List<Set<Integer>> chonsen_people_sets = new ArrayList<>(Collections.nCopies((1 << skillLen), new HashSet<>()));
-    Arrays.fill(states, max_people);
-    states[0] = 0;
-    for (int s = 0; s < states.length; s++) {
-        // no way to here, contiune to next
-        if (states[s] == max_people) continue;
-        Set<Integer> current_people_set = chonsen_people_sets.get(s);
-        for (int p = 0; p < people.size(); p++) {
-            // if the people is already chosen, continue
-            if (current_people_set.contains(p)) continue;
-            Set<Integer> next_people_set = new HashSet<>(current_people_set);
-            int temp_s = s;
-            List<String> p_skills = people.get(p);
-            for (int i = 0; i < p_skills.size(); i++) {
-                String p_skill = p_skills.get(i);
-                for (int j = 0; j < skillLen; j++) {
-                    if (req_skills[j].equals(p_skill) && ((temp_s >> j) & 1) == 0) {
-                        temp_s |= (1 << j);
-                        break;
-                    }
-                }
-            }
-            // dynamically get the minimum number of people
-            if (temp_s != s && states[temp_s] > states[s] + 1) {
-                states[temp_s] = states[s] + 1;
-                next_people_set.add(p);
-                chonsen_people_sets.set(temp_s, next_people_set);
-            }
-        }
-    }
-    Set<Integer> res_set = chonsen_people_sets.get((1 << skillLen) - 1);
-    int length = res_set.size();
-    int[] res = new int[length];
-    int index = 0;
-    for (Integer p : res_set) {
-        res[index++] = p;
-    }
-    return res;
-}
-```
-
-
-
-## [1349. Maximum Students Taking Exam](https://leetcode.com/problems/maximum-students-taking-exam/)
-
-```java
-//1349. Maximum Students Taking Exam
-public class MaximumStudentsTakingExam {
-    char[][] seats_global;
-    int m, n;
-
-    public int maxStudents(char[][] seats) {
-        // The current row's elements only affected by the previous row's elements, and the current row's elements
-        // dp[i][p] means maximum number of students that can take the exam together without any cheating being possible by the i-th row, and we choose pattern p at the i-th row
-        // dp[i][p] = max(dp[i-1][t]), t range in [0, maximum pattern] (for t = 0, 1, ..., 2^N), not conflicts with p
-        seats_global = seats;
-        m = seats.length;
-        n = seats[0].length;
-        int[] dp = new int[(1 << n)];
-        for (int p = 0; p < (1 << n); p++) {
-            if (isSameRowNoConflicts(p, 0)) {
-                dp[p] = countSeats(p);
-            }
-        }
-        for (int row = 1; row < m; row++) {
-            int[] dp_prev = Arrays.copyOf(dp, dp.length);
-            Arrays.fill(dp, 0);
-            for (int cur_state = 0; cur_state < (1 << n); cur_state++) {
-                // check if in current row has conflicts, for example: 11001, the 1-st and 2-nd seats have conflicts
-                if (!isSameRowNoConflicts(cur_state, row)) continue;
-                // update dp[cur_state]
-                for (int prev_state = 0; prev_state < (1 << n); prev_state++) {
-                    // check if in previous row has conflicts
-                    if (!isSameRowNoConflicts(prev_state, row - 1)) continue;
-                    /*
-                        check if two cross rows have conflicts, for example:
-                        1 0 0
-                        0 1 0
-                        1-st row's 1-st element have conflict with 2-nd row's 2-nd element
-                    */
-                    if (!isPrevRowNoConflicts(cur_state, prev_state)) continue;
-                    dp[cur_state] = Math.max(dp_prev[prev_state] + countSeats(cur_state), dp[cur_state]);
-                }
-            }
-        }
-        int res = 0;
-        for (int p = 0; p < (1 << n); p++) {
-            res = Math.max(res, dp[p]);
-        }
-        return res;
-    }
-
-    /*count the number of 1 of a binary number*/
-    private int countSeats(int cur_state) {
-        int res = 0;
-        while (cur_state > 0) {
-            res += cur_state % 2;
-            cur_state /= 2;
-        }
-        return res;
-    }
-
-    private boolean isPrevRowNoConflicts(int cur_state, int prev_state) {
-        int[] temp_cur = new int[n];
-        int[] temp_prev = new int[n];
-        for (int i = 0; i < n; i++) {
-            temp_cur[i] = cur_state % 2;
-            temp_prev[i] = prev_state % 2;
-            cur_state /= 2;
-            prev_state /= 2;
-        }
-        for (int i = 0; i < n; i++) {
-            // if current seat and top-left seat are both occupied
-            if (temp_cur[i] == 1 && i - 1 >= 0 && temp_prev[i - 1] == 1) {
-                return false;
-            }
-            // if current seat and top-right seat are both occupied
-            if (temp_cur[i] == 1 && i + 1 < n && temp_prev[i + 1] == 1) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean isSameRowNoConflicts(int cur_state, int row) {
-        int[] temp = new int[n];
-        for (int i = 0; i < n; i++) {
-            temp[i] = cur_state % 2;
-            cur_state /= 2;
-        }
-        for (int i = 0; i < n; i++) {
-            // if it is a broken seat, we can not set the pattern to 1 means someone seat there
-            if (temp[i] == 1 && seats_global[row][i] == '#') {
-                return false;
-            }
-            // It's left position cannot seat
-            if (temp[i] == 1 && i - 1 >= 0 && temp[i - 1] == 1) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-```
-
-
-
-## [1434. Number of Ways to Wear Different Hats to Each Other](https://leetcode.com/problems/number-of-ways-to-wear-different-hats-to-each-other/)
-
-```
-Way1:
-// state: binary type, i-th bit represents if the i-th hat has been taken
-// dp[state]: number of ways for this case
-for people in [0, n]:
-	for state in [00...00, 11...11]:
-		for hat in HatsForThisPeople:
-			if hat has been taken in state: continue
-			dp_new[state+hat] += dp[state]
-ans = sum(dp[state]) for those states contain n bit 1
-// But the time complexity is big
-
-Way2:
-// i-th bit represents if the i-th people has taken a hat
-// dp[state]: number of ways for this case
-for hats in [1, 40]:
-	for state in [00...00, 11...11]:
-		for people in PersonForThisHat:
-			if people has taken hat in this state: continue
-			dp_new[state+people] += dp[state]
-ans = dp[state] which state full filled with 1
-```
-
-```java
-// 1434. Number of Ways to Wear Different Hats to Each Other
-public class NumberOfWays2WearDifferentHats2EachOther {
-    int max_nHats = 40;
-    int n;
-    List<List<Integer>> hats;
-
-    public int numberWays(List<List<Integer>> hats) {
-        // i-th bit represents if the i-th people has taken a hat
-        // dp[state]: number of ways for this case
-        n = hats.size();
-        int nState = 1 << n;
-        long[] dp = new long[nState];
-        // no one take a hat is also one way
-        dp[0] = 1;
-        Map<Integer, Set<Integer>> personForThisHat = new HashMap<>();
-        for (int p = 0; p < n; p++) {
-            List<Integer> hatsForThisPerson = hats.get(p);
-            for (Integer hat : hatsForThisPerson) {
-                Set<Integer> person = personForThisHat.getOrDefault(hat, new HashSet<>());
-                if (!person.contains(p)) person.add(p);
-                personForThisHat.put(hat, person);
-            }
-        }
-        for (int hat = 1; hat <= 40; hat++) {
-            long[] dp_new = Arrays.copyOf(dp, dp.length);
-            for (int state = 0; state < nState; state++) {
-                Set<Integer> person = personForThisHat.getOrDefault(hat, new HashSet<>());
-                for (Integer p : person) {
-                    if (hasHat(state, p)) continue;
-                    dp_new[state + (1 << p)] = (dp_new[state + (1 << p)] + dp[state]) % (long) (1e9 + 7);
-                }
-            }
-            dp = dp_new;
-        }
-        return (int) dp[nState - 1];
-    }
-
-    private boolean hasHat(int state, int p) {
-        // bitwise shift operation
-        return ((state >> p) & 1) == 1;
-    }
-}
-```
 
 
 
