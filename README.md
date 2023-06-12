@@ -4455,129 +4455,47 @@ public class Solution21 {
 
 
 
-## [0123. 买卖股票的最佳时机 III](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-iii/)
+## [123. Best Time to Buy and Sell Stock III](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iii/)
 
 ```java
-//0123. 买卖股票的最佳时机 III
-public class Solution22 {
+// 123. Best Time to Buy and Sell Stock III
+public class BestTime2BuyAndSellStockIII {
     public int maxProfit(int[] prices) {
-        if (prices.length == 1){
-            return 0;
-        }
-        int[] dp2 = new int[prices.length];
-        dp2[0] = 0;
-        for (int i = 0; i < dp2.length; i++){
-            int[][] dp = new int[i + 1][2];
-            dp[0][0] = -prices[0];
-            dp[0][1] = 0;
-            for (int k = 1; k < dp.length; i++){
-                dp[k][0] = Math.max(dp[k - 1][0], -prices[k]);
-                dp[k][1] = Math.max(dp[k - 1][1], dp[k - 1][0] + prices[k]);
-            }
-            int[][] dpa = new int[dp2.length - 1 - i][2];
-            if (dpa.length > 0){
-                dpa[0][0] = -prices[i + 1];
-                dpa[0][1] = 0;
-            }
-            for (int j = 1; j < dpa.length; j++){
-                dpa[j][0] = Math.max(dpa[j - 1][0], -prices[i + 1 + j]);
-                dpa[j][1] = Math.max(dpa[j - 1][1], dpa[j - 1][0] + prices[i + 1 + j]);
-            }
-            if (i == 0){
-                dp2[i] = dp[dp.length - 1][1] + dpa[dpa.length - 1][1];
-            }else if (i == dp2.length - 1){
-                dp2[i] = Math.max(dp2[i - 1], dp[dp.length - 1][1]);
-            }else {
-                dp2[i] = Math.max(dp2[i - 1], dp[dp.length - 1][1] + dpa[dpa.length - 1][1]);
-            }
-        }
-        return dp2[dp2.length - 1];
-    }
-
-    public int maxProfit2(int[] prices) {
-        int[][] dp = new int[prices.length][5];
+        // state: 0 means have not bought any stocks, 1 means have bought one stock but not sell,
+        // 2 means finish one transcation but have not bought the second stock, 3 means have bought the second stock
+        // 4 means finish two transcations
+        // dp[i][s]: the maximum profit for the first i day with state s
+        int nState = 5;
+        int n = prices.length;
+        int[][] dp = new int[n][nState];
         dp[0][0] = 0;
         dp[0][1] = -prices[0];
-        dp[0][2] = 0;
-        dp[0][3] = -prices[0];
-        dp[0][4] = 0;
-        for (int i = 1; i < dp.length; i++){
+        dp[0][2] = -Integer.MAX_VALUE;
+        dp[0][3] = -Integer.MAX_VALUE;
+        dp[0][4] = -Integer.MAX_VALUE;
+        for (int i = 1; i < n; i++) {
             dp[i][0] = dp[i - 1][0];
-            dp[i][1] = Math.max(dp[i - 1][1], -prices[i]);
-            dp[i][2] = Math.max(dp[i - 1][2], dp[i - 1][1] + prices[i]);
-            dp[i][3] = Math.max(dp[i - 1][3], dp[i - 1][2] - prices[i]);
-            dp[i][4] = Math.max(dp[i - 1][4], dp[i - 1][3] + prices[i]);
+            dp[i][1] = Math.max(dp[i - 1][0] - prices[i], dp[i - 1][1]);
+            dp[i][2] = Math.max(dp[i - 1][1] + prices[i], dp[i - 1][2]);
+            if (-Integer.MAX_VALUE == dp[i - 1][2]) {
+                dp[i][3] = -Integer.MAX_VALUE;
+            } else {
+                dp[i][3] = Math.max(dp[i - 1][2] - prices[i], dp[i - 1][3]);
+            }
+            if (-Integer.MAX_VALUE == dp[i - 1][3]) {
+                dp[i][4] = -Integer.MAX_VALUE;
+            } else {
+                dp[i][4] = Math.max(dp[i - 1][3] + prices[i], dp[i - 1][4]);
+            }
         }
-        return dp[dp.length - 1][4] >= dp[dp.length - 1][2] ? dp[dp.length - 1][4] : dp[dp.length - 1][2];
+        int res = 0;
+        for (int i = 0; i < nState; i++) {
+            res = Math.max(res, dp[n - 1][i]);
+        }
+        return res;
     }
 }
 ```
-
-写了两种方法，第一种方法是相当于把数组拆分成两部分，分别做0121.买卖股票的最佳时机的操作，就是没法ac，运行超时。
-
-第二种方法是：
-
-1. 确定dp数组以及下标的含义
-
-   一天一共就有五个状态，
-
-   1. 没有操作
-   2. 第一次买入
-   3. 第一次卖出
-   4. 第二次买入
-   5. 第二次卖出
-
-   `dp[i][j]`中 i表示第i天，j为 [0 - 4] 五个状态，`dp[i][j]`表示第i天状态j所剩最大现金。
-
-2. 确定递推公式
-
-   需要注意：`dp[i][1]`，**表示的是第i天，买入股票的状态，并不是说一定要第i天买入股票，这是很多同学容易陷入的误区**。
-
-   达到`dp[i][1]`状态，有两个具体操作：
-
-   - 操作一：第i天买入股票了，那么`dp[i][1] = dp[i-1][0] - prices[i]`
-   - 操作二：第i天没有操作，而是沿用前一天买入的状态，即：`dp[i][1] = dp[i - 1][1]`
-
-   那么`dp[i][1]`究竟选 `dp[i-1][0] - prices[i]`，还是`dp[i - 1][1]`呢？
-
-   一定是选最大的，所以 `dp[i][1] = max(dp[i-1][0] - prices[i], dp[i - 1][1])`;
-
-   同理`dp[i][2]`也有两个操作：
-
-   - 操作一：第i天卖出股票了，那么`dp[i][2] = dp[i - 1][1] + prices[i]`
-   - 操作二：第i天没有操作，沿用前一天卖出股票的状态，即：`dp[i][2] = dp[i - 1][2]`
-
-   所以`dp[i][2] = max(dp[i - 1][1] + prices[i], dp[i - 1][2])`
-
-   同理可推出剩下状态部分：
-
-   `dp[i][3] = max(dp[i - 1][3], dp[i - 1][2] - prices[i])`;
-
-   `dp[i][4] = max(dp[i - 1][4], dp[i - 1][3] + prices[i])`;
-
-3. dp数组如何初始化
-
-   第0天没有操作，这个最容易想到，就是0，即：`dp[0][0] = 0`;
-
-   第0天做第一次买入的操作，`dp[0][1] = -prices[0]`;
-
-   第0天做第一次卖出的操作，这个初始值应该是多少呢？
-
-   首先卖出的操作一定是收获利润，整个股票买卖最差情况也就是没有盈利即全程无操作现金为0，
-
-   从递推公式中可以看出每次是取最大值，那么既然是收获利润如果比0还小了就没有必要收获这个利润了。
-
-   所以`dp[0][2] = 0`;
-
-   第0天第二次买入操作，初始值应该是多少呢？应该不少同学疑惑，第一次还没买入呢，怎么初始化第二次买入呢？
-
-   第二次买入依赖于第一次卖出的状态，其实相当于第0天第一次买入了，第一次卖出了，然后在买入一次（第二次买入），那么现在手头上没有现金，只要买入，现金就做相应的减少。
-
-   所以第二次买入操作，初始化为：`dp[0][3] = -prices[0]`;
-
-   同理第二次卖出初始化`dp[0][4] = 0`;
-
-
 
 
 
@@ -4644,54 +4562,33 @@ public class Solution23 {
 
 
 
-
-
-
-
-## [0309. 最佳买卖股票时机含冷冻期](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/)
+## [309. Best Time to Buy and Sell Stock with Cooldown](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/)
 
 ```java
-//0309. 最佳买卖股票时机含冷冻期
-public class Solution24 {
+// 309. Best Time to Buy and Sell Stock with Cooldown
+public class BestTime2BuyAndSellStockWithCooldown {
     public int maxProfit(int[] prices) {
-        int[][] dp = new int[prices.length][4];
-        dp[0][0] = -prices[0];//买入股票状态
-        dp[0][1] = 0;//不持有股票，已经卖出股票超过一天
-        dp[0][2] = 0;//不持有股票，今天刚卖出股票
-        dp[0][3] = 0;//冷冻期状态
-        for (int i = 1; i < dp.length; i++) {
-            dp[i][0] = Math.max(Math.max(dp[i - 1][0], dp[i - 1][1] - prices[i]), dp[i - 1][3] - prices[i]);
-            dp[i][1] = Math.max(dp[i - 1][1], dp[i - 1][3]);
-            dp[i][2] = dp[i - 1][0] + prices[i];
-            dp[i][3] = dp[i - 1][2];
+        // state: 0 means no stock, 1 means have stock, 2 means sell cooldown
+        // dp[i][s]: the maximum profit for the first i day with state s
+        int n = prices.length;
+        int nState = 3;
+        int[][] dp = new int[n][nState];
+        dp[0][0] = 0;
+        dp[0][1] = -prices[0];
+        dp[0][2] = -Integer.MAX_VALUE;
+        for (int i = 1; i < n; i++) {
+            dp[i][0] = Math.max(dp[i - 1][0], dp[i - 1][2]);
+            dp[i][1] = Math.max(dp[i - 1][1], dp[i - 1][0] - prices[i]);
+            dp[i][2] = dp[i - 1][1] + prices[i];
         }
-        return Math.max(Math.max(dp[dp.length - 1][1], dp[dp.length - 1][2]), dp[dp.length - 1][3]);
+        int res = 0;
+        for (int i = 0; i < nState; i++) {
+            res = Math.max(res, dp[n - 1][i]);
+        }
+        return res;
     }
 }
 ```
-
-思路：
-
-1. 确定dp数组以及下标的含义
-
-   `dp[i][j]`，第i天状态为j，所剩的最多现金为`dp[i][j]`。
-
-   **其实本题很多同学搞的比较懵，是因为出现冷冻期之后，状态其实是比较复杂度**，例如今天买入股票、今天卖出股票、今天是冷冻期，都是不能操作股票的。 具体可以区分出如下四个状态：
-
-   - 状态一：买入股票状态（今天买入股票，或者是之前就买入了股票然后没有操作）
-   - 卖出股票状态，这里就有两种卖出股票状态
-     - 状态二：两天前就卖出了股票，度过了冷冻期，一直没操作，今天保持卖出股票状态
-     - 状态三：今天卖出了股票
-   - 状态四：今天为冷冻期状态，但冷冻期状态不可持续，只有一天！
-
-2. 确定递推公式
-
-   - `dp[i][0]`可以由三个状态推导过来，所以递推公式为`Math.max(Math.max(dp[i - 1][0], dp[i - 1][1] - prices[i]), dp[i - 1][3] - prices[i])`，若i-1为刚卖出股票的j=2，在i时状态就是冷冻期，所以不能买入股票。
-   - `dp[i][1]`即此时股票已经卖出超过1天，度过冷却期，那么它可以由j=1和j=3推出，因为当i-1状态为冷冻期时，i就已经是状态1即卖出股票超过1天的状态了。递推公式为`Math.max(dp[i - 1][1], dp[i - 1][3])`。
-   - `dp[i][2]`状态定义为今天刚卖出股票，所以只能i-1时买入股票的状态推导过来，递推公式为`dp[i - 1][0] + prices[i]`。
-   - `dp[i][3]`状态为冷冻期，所以也只能由i-1时刚卖出股票的操作推来，则递推公式为`dp[i - 1][2]`。
-
-
 
 
 
@@ -5885,6 +5782,43 @@ public class Solution43 {
 
 
 
+## [376. Wiggle Subsequence](https://leetcode.com/problems/wiggle-subsequence/)
+
+```java
+// 376. Wiggle Subsequence
+public class WiggleSubsequence {
+    public int wiggleMaxLength(int[] nums) {
+        // state: 0 means current differ is a negative, 1 means positive
+        // dp[i][s]: the length of the longest wiggle subsequence for the first i elements in state s
+        // dp[i][s] = dp[n][1-s] + 1
+        int n = nums.length;
+        if (n == 1) return 1;
+        int nState = 2;
+        int[][] dp = new int[n][nState];
+        // To each element, itself is a wiggle subsequence, so the initial value are all 1
+        for (int i = 0; i < n; i++) {
+            Arrays.fill(dp[i], 1);
+        }
+        for (int i = 1; i < n; i++) {
+            if (nums[i] - nums[i - 1] > 0) {
+                dp[i][1] = Math.max(dp[i][1], dp[i - 1][0] + 1);
+                dp[i][0] = dp[i - 1][0];
+            } else if (nums[i] - nums[i - 1] < 0) {
+                dp[i][0] = Math.max(dp[i][0], dp[i - 1][1] + 1);
+                dp[i][1] = dp[i - 1][1];
+            } else {
+                dp[i][0] = dp[i - 1][0];
+                dp[i][1] = dp[i - 1][1];
+            }
+        }
+        return Math.max(dp[n - 1][0], dp[n - 1][1]);
+    }
+}
+
+```
+
+
+
 # Bit Masks & DP
 
 ## [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
@@ -6527,6 +6461,150 @@ public class MaximizeScoreAfterNOperations {
             b = remainder;
         }
         return a;
+    }
+}
+```
+
+
+
+## [1931. Painting a Grid With Three Different Colors](https://leetcode.com/problems/painting-a-grid-with-three-different-colors/)
+
+```java
+// 1931. Painting a Grid With Three Different Colors
+public class PaintingAGridWithThreeDifferentColors {
+    int m, n;
+    public int colorTheGrid(int m, int n) {
+        // state: n bits state, 0 means red cell, 1 means green cell, 2 means blue cell
+        // dp[i][s]: the number of ways to color the grid for 0 - i th rows and state is s, with no two adjacent cells having the same color
+        this.m = m;
+        this.n = n;
+        int nState = (int) Math.pow(3, m);
+        int[] dp = new int[nState];
+        // preprocess: filter all state combinations with no two adjacent cells hace the same color
+        List<Integer> states = new ArrayList<>();
+        for (int i = 0; i < nState; i++) {
+            if (hasTwoAdjacentInSameRow(i)) continue;
+            dp[i] = 1;
+            states.add(i);
+        }
+        for (int i = 1; i < n; i++) {
+            int[] dp_new = new int[nState];
+            for (int cur_index = 0; cur_index < states.size(); cur_index++) {
+                for (int prev_index = 0; prev_index < states.size(); prev_index++) {
+                    int s_cur = states.get(cur_index);
+                    int s_prev = states.get(prev_index);
+                    if (hasTwoAdjacentCrossRows(s_cur, s_prev)) continue;
+                    dp_new[s_cur] = (dp_new[s_cur] + dp[s_prev]) % (int) (1e9 + 7);
+                }
+            }
+            dp = dp_new;
+        }
+        int res = 0;
+        for (int i = 0; i < nState; i++) {
+            res = (res + dp[i]) % (int) (1e9 + 7);
+        }
+        return res;
+    }
+
+    private boolean hasTwoAdjacentCrossRows(int s_cur, int s_prev) {
+        for (int i = 0; i < m; i++) {
+            if (s_cur % 3 == s_prev % 3) return true;
+            s_cur /= 3;
+            s_prev /= 3;
+        }
+        return false;
+    }
+
+    private boolean hasTwoAdjacentInSameRow(int s) {
+        int[] state = new int[m];
+        for (int i = 0; i < m; i++) {
+            state[i] = s % 3;
+            s /= 3;
+        }
+        for (int i = 1; i < m; i++) {
+            if (state[i - 1] == state[i]) return true;
+        }
+        return false;
+    }
+}
+```
+
+
+
+## [1994. The Number of Good Subsets](https://leetcode.com/problems/the-number-of-good-subsets/)
+
+```java
+// 1994. The Number of Good Subsets
+public class TheNumberOfGoodSubsets {
+    List<Integer> primes;
+
+    Map<Integer, Integer> map = new HashMap<>();
+
+    public int numberOfGoodSubsets(int[] nums) {
+        // Since 1 <= nums[i] <= 30, there are only 10 different primes to consist the product
+        // they are [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+        // So we can convert to bitmask: 10-bits, like 0000000001 means the product contains one prime-2
+        // There are no duplicated primes
+        // dp[i][s]: the number of different good subsets for the first i elements in nums with state s
+        // dp[i] based on dp[i - 1], then dp[i][s] += dp[i][s-subset]
+        int n = nums.length;
+        primes = eratosthenes(30);
+        for (int i = 0; i < primes.size(); i++) {
+            map.put(primes.get(i), i);
+        }
+        int nState = 1 << primes.size();
+        int[] dp = new int[nState];
+        dp[0] = 1;
+        for (int i = 0; i < n; i++) {
+            int num = nums[i];
+            int state;
+            if ((state = convert2State(num)) == -1) continue;
+            for (int s = 0; s < nState; s++) {
+                if ((state & s) != state) continue;
+                dp[s] = (dp[s] + dp[s - state]) % (int) (1e9 + 7);
+            }
+        }
+        int res = 0;
+        for (int s = 1; s < nState; s++) {
+            res = (res + dp[s]) % (int) (1e9 + 7);
+        }
+        return res;
+    }
+
+    private int convert2State(int num) {
+        int state = 0;
+        for (Integer prime : primes) {
+            while (num % prime == 0) {
+                num /= prime;
+                Integer index = map.get(prime);
+                // check if num as a product of duplicated prime numbers
+                if (((state >> index) & 1) == 1) return -1;
+                state |= (1 << index);
+            }
+            if (num == 1) break;
+        }
+        return state;
+    }
+
+    private List<Integer> eratosthenes(int n) {
+        int[] q = new int[n + 1];
+        List<Integer> primes = new ArrayList<>();
+        for (int i = 2; i <= Math.sqrt(n); i++) {
+            if (q[i] == 1) {
+                continue;
+            }
+            int j = i * 2;
+            while (j <= n) {
+                q[j] = 1;
+                j += i;
+            }
+        }
+        for (int i = 2; i <= n; i++) {
+            if (q[i] == 0) {
+                primes.add(i);
+            }
+        }
+        return primes;
     }
 }
 ```
