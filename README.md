@@ -5819,6 +5819,32 @@ public class WiggleSubsequence {
 
 
 
+
+
+## [276. Paint Fence](https://leetcode.com/problems/paint-fence/)
+
+```java
+// 276. Paint Fence
+public class PaintFence {
+    public int numWays(int n, int k) {
+        // dp[i][s]: the number of ways you can paint the fence for the i-th posts with color c in state s
+        // s only have two states, 1 means have the same color with previous post, 0 means not the same
+        // dp[i][1] = dp[i - 1][0]
+        // dp[i][0] = (dp[i - 1][1] + dp[i - 1][0]) * (k - 1)
+        int[][] dp = new int[n][2];
+        dp[0][0] = k;
+        dp[0][1] = 0;
+        for (int i = 1; i < n; i++) {
+            dp[i][1] = dp[i - 1][0];
+            dp[i][0] = (dp[i - 1][0] + dp[i - 1][1]) * (k - 1);
+        }
+        return dp[n - 1][0] + dp[n - 1][1];
+    }
+}
+```
+
+
+
 # Bit Masks & DP
 
 ## [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
@@ -6605,6 +6631,583 @@ public class TheNumberOfGoodSubsets {
             }
         }
         return primes;
+    }
+}
+```
+
+```java
+// 1994. The Number of Good Subsets
+public class TheNumberOfGoodSubsets {
+    List<Integer> primes;
+
+    Map<Integer, Integer> map = new HashMap<>();
+
+    public int numberOfGoodSubsets(int[] nums) {
+        // Since 1 <= nums[i] <= 30, there are only 10 different primes to consist the product
+        // they are [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+        // So we can convert to bitmask: 10-bits, like 0000000001 means the product contains one prime-2
+        // There are no duplicated primes
+        // dp[i][s]: the number of different good subsets for the first i elements in nums with state s
+        // dp[i] based on dp[i - 1], then dp[i][s] += dp[i][s-subset]
+        int n = nums.length;
+        int m = 30;
+        primes = eratosthenes(m);
+        for (int i = 0; i < primes.size(); i++) {
+            map.put(primes.get(i), i);
+        }
+        int nState = 1 << primes.size();
+        int[] dp = new int[nState];
+        dp[0] = 1;
+        int[] freq = new int[m + 1];
+        for (int num : nums) {
+            freq[num]++;
+        }
+        for (int i = 0; i < freq[1]; ++i) {
+            dp[0] = dp[0] * 2 % (int) (1e9 + 7);
+        }
+        for (int i = 2; i <= m; i++) {
+            if (freq[i] == 0) continue;
+            int num = i;
+            int state;
+            if ((state = convert2State(num)) == -1) continue;
+            for (int s = 0; s < nState; s++) {
+                if ((state & s) != state) continue;
+                dp[s] = (int) ((dp[s] + ((long) dp[s - state]) * freq[num]) % (int) (1e9 + 7));
+            }
+        }
+        int res = 0;
+        for (int s = 1; s < nState; s++) {
+            res = (res + dp[s]) % (int) (1e9 + 7);
+        }
+        return res;
+    }
+
+    private int convert2State(int num) {
+        int state = 0;
+        for (Integer prime : primes) {
+            while (num % prime == 0) {
+                num /= prime;
+                Integer index = map.get(prime);
+                // check if num as a product of duplicated prime numbers
+                if (((state >> index) & 1) == 1) return -1;
+                state |= (1 << index);
+            }
+            if (num == 1) break;
+        }
+        return state;
+    }
+
+    private List<Integer> eratosthenes(int n) {
+        int[] q = new int[n + 1];
+        List<Integer> primes = new ArrayList<>();
+        for (int i = 2; i <= Math.sqrt(n); i++) {
+            if (q[i] == 1) {
+                continue;
+            }
+            int j = i * 2;
+            while (j <= n) {
+                q[j] = 1;
+                j += i;
+            }
+        }
+        for (int i = 2; i <= n; i++) {
+            if (q[i] == 0) {
+                primes.add(i);
+            }
+        }
+        return primes;
+    }
+}
+```
+
+
+
+## [2002. Maximum Product of the Length of Two Palindromic Subsequences](https://leetcode.com/problems/maximum-product-of-the-length-of-two-palindromic-subsequences/)
+
+```java
+// 2002. Maximum Product of the Length of Two Palindromic Subsequences
+public class MaximumProductOfTheLengthOfTwoPalindromicSubsequences {
+    int n;
+
+    public int maxProduct(String s) {
+        // state: n-bits state, for i-th bit, 0 means do not choose i-th character, 1 means choose
+        n = s.length();
+        int nState = 1 << n;
+        List<Integer> states = new ArrayList<>();
+        List<Integer> numberOfChar = new ArrayList<>();
+        for (int i = 1; i < nState; i++) {
+            int count = 0;
+            if ((count = isPalindromicSub(i, s)) == - 1) continue;
+            states.add(i);
+            numberOfChar.add(count);
+        }
+        int max = 0;
+        // try different valid state combination to get the maximum result
+        for (int state_cur_index = 0; state_cur_index < states.size(); state_cur_index++) {
+            for (int state_prev_index = 0; state_prev_index < states.size(); state_prev_index++) {
+                Integer s_cur = states.get(state_cur_index);
+                Integer s_prev = states.get(state_prev_index);
+                if (!isDisjoint(s_cur, s_prev)) continue;
+                max = Math.max(max, numberOfChar.get(state_cur_index) * numberOfChar.get(state_prev_index));
+            }
+        }
+        return max;
+    }
+
+    private boolean isDisjoint(Integer s_cur, Integer s_prev) {
+        // Check if two k 1-bits have both 1 in the same index
+        return s_cur + s_prev == (s_cur ^ s_prev);
+    }
+
+    private int isPalindromicSub(int state, String s) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n; i++) {
+            if (state % 2 == 1) sb.append(s.charAt(i));
+            state /= 2;
+        }
+        String sub_s = sb.toString();
+        int mid = (sub_s.length() - 1) / 2;
+        // for even numbers
+        if (sb.length() % 2 == 0) {
+            mid += 1;
+        }
+        for (int i = 0; i < mid; i++) {
+            if (sub_s.charAt(i) != sub_s.charAt(sub_s.length() - 1 - i)) return -1;
+        }
+        return sub_s.length();
+    }
+}
+```
+
+
+
+## [2572. Count the Number of Square-Free Subsets](https://leetcode.com/problems/count-the-number-of-square-free-subsets/)
+
+```java
+// 2572. Count the Number of Square-Free Subsets
+public class CountTheNumberOfSquareFreeSubsets {
+    int[] primes = new int[]{2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+
+    public int squareFreeSubsets(int[] nums) {
+        // state: primes.size of bits , for i-th bit, 1 means the i-th prime appeared once, 0 means no
+        // dp[i][s]: the number of square-free non-empty subsets of the array of state s for the first i elements of state s
+        // dp[i] is based on dp[i - 1], so we can convert it to 1D matrix
+        int n = primes.length;
+        int m = nums.length;
+        int MOD = (int) (1e9 + 7);
+        int nState = 1 << n;
+        int upper = 30;
+        int[] states = new int[upper + 1];
+        int[] counts = new int[upper + 1];
+        int[] dp = new int[nState];
+        dp[0] = 1;
+        for (int i = 0; i < m; i++) {
+            counts[nums[i]]++;
+        }
+        // create a states array, if the element in nums is already a non-square-free integer, mark as -1
+        for (int i = 1; i <= 30; i++) {
+            int state = getPrimeFactors(i);
+            states[i] = state;
+        }
+        for (int i = 2; i < counts.length; i++) {
+            if (counts[i] == 0) continue;
+            int subset = states[i];
+            if (subset == -1) continue;
+            for (int s_cur = 0; s_cur < nState; s_cur++) {
+                if ((s_cur & subset) != subset) continue;
+                dp[s_cur] = (int) ((dp[s_cur] + (long) dp[s_cur - subset] * counts[i]) % MOD);
+            }
+        }
+        int res = 0;
+        // state: 00...00 is not valid res, so start from 00...01
+        for (int i = 1; i < nState; i++) {
+            res = (res + dp[i]) % MOD;
+        }
+        // for element of 1, do operation separately
+        int comb = 1;
+        for (int i = 1; i <= counts[1]; i++) {
+            comb = (comb * 2) % MOD;
+            res = (res * 2) % MOD;
+        }
+        // If only consider element of 1, there are n number of 1, the number of combination will be 2 ^ n - 1
+        res = (res + comb - 1) % MOD;
+        return res;
+    }
+
+    private int getPrimeFactors(int value) {
+        int state = 0;
+        for (int i = 0; i < primes.length; i++) {
+            int prime = primes[i];
+            while (value % prime == 0) {
+                if (((state >> i) & 1) == 1) return -1;
+                state |= 1 << i;
+                value /= prime;
+            }
+        }
+        return state;
+    }
+}
+```
+
+
+
+## [2403. Minimum Time to Kill All Monsters](https://leetcode.com/problems/minimum-time-to-kill-all-monsters/)
+
+```java
+// 2403. Minimum Time to Kill All Monsters
+public class MinimumTime2KillAllMonsters {
+    public long minimumTime(int[] power) {
+        // states: i-th bit represents has the i-th monster been killed
+        // dp[i][s]: the minimum time to kill monsters in state s
+        int n = power.length;
+        int nState = 1 << n;
+        long[][] dp = new long[n + 1][nState];
+        int[] subsets = new int[n];
+        for (int i = 0; i < n; i++) {
+            subsets[i] = (1 << i);
+        }
+        // the first i time kill a monster, i is equal to gain
+        for (int i = 1; i <= n; i++) {
+            for (int s = 0; s < nState; s++) {
+                dp[i][s] = Long.MAX_VALUE;
+                for (int s_index = 0; s_index < n; s_index++) {
+                    int subset = subsets[s_index];
+                    if ((s & subset) != subset) continue;
+                    long prev_day = dp[i - 1][s - subset];
+                    long days = getDays(prev_day, power[s_index], i);
+                    dp[i][s] = Math.min(dp[i][s], days);
+                }
+            }
+        }
+        return dp[n][nState - 1];
+    }
+
+    private long getDays(long prev_day, int power, int gain) {
+        int days2Kill = power / gain;
+        if (power % gain != 0) {
+            days2Kill++;
+        }
+        return prev_day + days2Kill;
+    }
+}
+```
+
+
+
+## [1494. Parallel Courses II](https://leetcode.com/problems/parallel-courses-ii/)
+
+```java
+// 1494. Parallel Courses II
+public class ParallelCoursesII {
+    int n, k;
+
+    int[] prev_courses, prereq;
+
+    public int minNumberOfSemesters(int n, int[][] relations, int k) {
+        // state: for the i-th bit, 1 means course i-1 have taken, 0 means no
+        // dp[i][s]: the minimum number of semesters needed to take courses in state s for the first i courses
+        // we also use states to store the adjacencyTable, for example: course 5 need courses 1,2,3 then prev[10000] = 00111
+        this.n = n;
+        this.k = k;
+        int nState = (1 << n);
+        int[] dp = new int[nState];
+        Arrays.fill(dp, Integer.MAX_VALUE);
+        dp[0] = 0;
+        prev_courses = new int[n];
+        prereq = new int[nState];
+        for (int[] relation : relations) {
+            int preCourse = relation[0];
+            int nextCourse = relation[1];
+            prev_courses[nextCourse - 1] |= (1 << (preCourse - 1));
+        }
+        for (int s = 0; s < nState; s++) {
+            prereq[s] = 0;
+            for (int i = 0; i < n; i++) {
+                if (((s >> i) & 1) == 1) prereq[s] |= prev_courses[i];
+            }
+        }
+        for (int state = 0; state < nState; state++) {
+            for (int subset = state; subset > 0; subset = (subset - 1) & state) {
+                if (!isValidCoursesSelectInOneSemester(subset)) continue;
+                if (((state - subset) & prereq[state]) != prereq[state]) continue;
+                if (dp[state - subset] == Integer.MAX_VALUE) continue;
+                dp[state] = Math.min(dp[state], dp[state - subset] + 1);
+            }
+        }
+        return dp[nState - 1];
+    }
+
+    private boolean isValidCoursesSelectInOneSemester(int state) {
+        return Integer.bitCount(state) <= k;
+    }
+}
+```
+
+
+
+## [1655. Distribute Repeating Integers](https://leetcode.com/problems/distribute-repeating-integers/)
+
+```java
+// 1655. Distribute Repeating Integers
+public class DistributeRepeatingIntegers {
+    int n, m;
+    int[] quantity;
+
+    public boolean canDistribute(int[] nums, int[] quantity) {
+        this.quantity = quantity;
+        // state: m bit binary, 0 represents i-th customer's order have not completed, 1 represents completed
+        // dp[s] means if it is possible to distribute nums for state s. 1 represents possible, 0 represents impossible
+        // dp_new[s+(1<<p)] = dp[s] == 1 ? 1 : 0
+        n = nums.length;
+        m = quantity.length;
+        int nState = 1 << m;
+        int[] quantities = new int[nState];
+        for (int s = 0; s < nState; s++) {
+            quantities[s] = getQuantitiesForTheseState(s);
+        }
+        int[] dp = new int[nState];
+        dp[0] = 1;
+        // Firstly refactor nums array to count[i] number of i-th value, using Map to store
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            Integer count = counts.getOrDefault(nums[i], 0);
+            count++;
+            counts.put(nums[i], count);
+        }
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            Integer nValue = entry.getValue();
+            int[] dp_new = Arrays.copyOf(dp, dp.length);
+            for (int s = 1; s < (1 << m); s++) {
+                // Since we have use the number of value to satisfy previous state, we need to exclude them out
+                // So the inside loop should to iterate state from [1, current_s]
+                // s = ((s - 1) & s) can eliminate one '1' each time
+                for (int subset = s; subset > 0; subset = ((subset - 1) & s)) {
+                    if (dp[s - subset] != 1) continue;
+                    if (quantities[subset] > nValue) continue;
+                    dp_new[s] = 1;
+                }
+            }
+            dp = dp_new;
+        }
+        return dp[dp.length - 1] == 1;
+    }
+
+    private int getQuantitiesForTheseState( int s) {
+        int tempValue = 0;
+        for (int i = 0; i < m; i++) {
+            if (s % 2 == 1) tempValue += quantity[i];
+            s /= 2;
+        }
+        return tempValue;
+    }
+}
+```
+
+
+
+## [1986. Minimum Number of Work Sessions to Finish the Tasks](https://leetcode.com/problems/minimum-number-of-work-sessions-to-finish-the-tasks/)
+
+```java
+// 1986. Minimum Number of Work Sessions to Finish the Tasks
+public class MinimumNumberOfWorkSessions2FinishTheTasks {
+    int n;
+    int[] tasks;
+
+    public int minSessions(int[] tasks, int sessionTime) {
+        // states: i-th bits represents is the i-th task completed
+        // dp[s]: the minimum number of work sessions needed to finish tasks with state s
+        this.n = tasks.length;
+        this.tasks = tasks;
+        int nState = 1 << n;
+        int[] dp = new int[nState];
+        int[] isValidState = new int[nState];
+        for (int s = 0; s < nState; s++) {
+            if (!isValidSubset(s, sessionTime)) continue;
+            isValidState[s] = 1;
+        }
+        Arrays.fill(dp, Integer.MAX_VALUE / 2);
+        dp[0] = 0;
+        for (int s = 1; s < nState; s++) {
+            for (int subset = s; subset > 0; subset = (subset - 1) & s) {
+                if (isValidState[subset] != 1) continue;
+                dp[s] = Math.min(dp[s], dp[s - subset] + 1);
+            }
+        }
+        return dp[nState - 1];
+    }
+
+    private boolean isValidSubset(int subset, int sessionTime) {
+        int count = 0;
+        for (int i = 0; i < this.n; i++) {
+            if (subset % 2 == 1) {
+                count += tasks[i];
+            }
+            subset /= 2;
+        }
+        return count <= sessionTime;
+    }
+}
+```
+
+
+
+## [2152. Minimum Number of Lines to Cover Points](https://leetcode.com/problems/minimum-number-of-lines-to-cover-points/)
+
+```java
+// 2152. Minimum Number of Lines to Cover Points
+public class MinimumNumberOfLines2CoverPoints {
+    int n;
+    int[][] points;
+
+    public int minimumLines(int[][] points) {
+        // states: i-th bit represents is the i-th point been crossed by at least one line
+        // dp[s]: the minimum number of straight lines needed to cover points in state s
+        //  filter all state that the points in such state can be covered in one line, and use array valid to store them
+        this.points = points;
+        this.n = points.length;
+        int nState = 1 << this.n;
+        int[] dp = new int[nState];
+        int[] valid = new int[nState];
+        Arrays.fill(dp, Integer.MAX_VALUE / 2);
+        dp[0] = 0;
+        for (int s = 0; s < nState; s++) {
+            if (!isStateValidInOneLine(s, points)) continue;
+            valid[s] = 1;
+        }
+        for (int state = 0; state < nState; state++) {
+            for (int subset = state; subset > 0; subset = (subset - 1) & state) {
+                if (valid[subset] != 1) continue;
+                dp[state] = Math.min(dp[state], dp[state - subset] + 1);
+            }
+        }
+        return dp[nState - 1];
+    }
+
+    private boolean isStateValidInOneLine(int s, int[][] points) {
+        boolean isFirstPointFound = false;
+        boolean isSecondPointFound = false;
+        int[] firstPoint = new int[2];
+        int[] secondPoint = new int[2];
+        double k = 0.0;
+        for (int i = 0; i < this.n; i++) {
+            if (s % 2 == 1) {
+                if (!isFirstPointFound) {
+                    firstPoint = Arrays.copyOf(points[i], 2);
+                    isFirstPointFound = true;
+                } else if (!isSecondPointFound) {
+                    secondPoint = Arrays.copyOf(points[i], 2);
+                    isSecondPointFound = true;
+                    if (Math.abs(secondPoint[0] - firstPoint[0]) <= 1e-5) {
+                        k = Double.MAX_VALUE;
+                    } else {
+                        k = (double) (secondPoint[1] - firstPoint[1]) / (secondPoint[0] - firstPoint[0]);
+                    }
+                } else {
+                    double temp_k = 0.0;
+                    if (Math.abs(points[i][0] - firstPoint[0]) <= 1e-5) {
+                        temp_k = Double.MAX_VALUE;
+                    } else {
+                        temp_k = (double) (points[i][1] - firstPoint[1]) / (points[i][0] - firstPoint[0]);
+                    }
+                    if (Math.abs(temp_k - k) > 1e-5) return false;
+                }
+            }
+            s /= 2;
+        }
+        return true;
+    }
+}
+```
+
+
+
+## [1879. Minimum XOR Sum of Two Arrays](https://leetcode.com/problems/minimum-xor-sum-of-two-arrays/)
+
+```java
+// 1879. Minimum XOR Sum of Two Arrays
+public class MinimumXORSumOfTwoArrays {
+    int n;
+
+    public int minimumXORSum(int[] nums1, int[] nums2) {
+        this.n = nums1.length;
+        int nState = 1 << n;
+        int[][] xorSums = new int[n][nState];
+        for (int i = 0; i < n; i++) {
+            for (int s = 0; s < nState; s++) {
+                if (Integer.bitCount(s) != 1) continue;
+                xorSums[i][s] = getXORSum(s, i, nums1, nums2);
+            }
+        }
+        int[][] dp = new int[n + 1][nState];
+        for (int i = 0; i < n + 1; i++) {
+            Arrays.fill(dp[i], Integer.MAX_VALUE / 2);
+            dp[i][0] = 0;
+        }
+        for (int i = 1; i <= n; i++) {
+            for (int state = 0; state < nState; state++) {
+                for (int j = 0; j < n; j++) {
+                    int subset = 1 << j;
+                    if ((subset & state) != subset) continue;
+                    dp[i][state] = Math.min(dp[i][state], dp[i - 1][state - subset] + xorSums[i - 1][subset]);
+                }
+            }
+        }
+        return dp[n][nState - 1];
+    }
+
+    private int getXORSum(int state, int index1, int[] nums1, int[] nums2) {
+        int index2 = 0;
+        for (int i = 0; i < this.n; i++) {
+            if (state % 2 == 1) {
+                index2 = i;
+                break;
+            }
+            state /= 2;
+        }
+        return nums1[index1] ^ nums2[index2];
+    }
+}
+```
+
+
+
+## [1947. Maximum Compatibility Score Sum](https://leetcode.com/problems/maximum-compatibility-score-sum/)
+
+```java
+// 1947. Maximum Compatibility Score Sum
+public class MaximumCompatibilityScoreSum {
+    public int maxCompatibilitySum(int[][] students, int[][] mentors) {
+        // state: i-th bit represent is the i-th mentor be selected
+        // dp[i][s]: the maximum compatibility score sum for the first i students, and using the mentors in state s
+        int n = students.length;
+        int nState = 1 << n;
+        int[][] compatibility = new int[n][n];
+        int[][] dp = new int[n + 1][nState];
+        for (int i = 0; i < n; i++) {
+            int[] ans_std = students[i];
+            for (int j = 0; j < n; j++) {
+                int[] ans_ment = mentors[j];
+                int score = 0;
+                for (int k = 0; k < ans_ment.length; k++) {
+                    if (ans_std[k] == ans_ment[k]) score++;
+                }
+                compatibility[i][j] = score;
+            }
+        }
+        Arrays.fill(dp[0], -1);
+        dp[0][0] = 0;
+        for (int i = 1; i <= n; i++) {
+            dp[i] = Arrays.copyOf(dp[i - 1], nState);
+            for (int s = 0; s < nState; s++) {
+                for (int mi = 0; mi < n; mi++) {
+                    int subset = 1 << mi;
+                    if ((subset & s) != subset) continue;
+                    if (dp[i - 1][s - subset] == -1) continue;
+                    dp[i][s] = Math.max(dp[i][s], dp[i - 1][s - subset] + compatibility[i - 1][mi]);
+                }
+            }
+        }
+        return dp[n][nState - 1];
     }
 }
 ```
@@ -13357,6 +13960,14 @@ public class Solution8 {
 ## Example
 
 ```
+Give you 25 horses and 5 paths, each game can let 5 horses to contest, find the three fastest horses in the smallest number of times.
+Divide and conque:
+Split 25 horses to 5 groups, each group have 5 horses and can attend one game on the same time.
+We pick up the fastest horse in each game, and let them contest.
+Then we can get the first three fastest horses
+```
+
+```
 A:[Y Y Y Y Y Y Z Z Z Z Z]
 B:[Y Y Y Y Y Y] C:[Z Z Z Z Z]
 Example: counts[i] is the number of smaller elements to the right of A[i]
@@ -15189,6 +15800,33 @@ public int countSubarrays(int[] nums, int k) {
 
 # Bit Manipulation
 
+## Iterating Subsets
+
+```java
+// subset = (subset - 1) & state can iterate all the subsets
+for (int state = 0; state < nState; state++) {
+    for (int subset = state; subset > 0; subset = (subset - 1) & state) {
+        // do something
+    }
+}
+```
+
+
+
+## Check if two $k$ 1-bits have both 1 in the same index
+
+```java
+// return true means have no both 1 in the same index for all indexes
+// return false means have at least both 1 in the same index
+s1 + s2 == (s1 ^ s2)
+// Example: 
+// (101 + 110 = 1011) != ((101 ^ 110) = 011)
+// (101 + 010 = 111) == ((101 ^ 010) = 111)
+// 001 + 010 = 011  001 ^ 010 = 011
+```
+
+
+
 ## Find all $k$ 1-bits from $n$ bits
 
 ```java
@@ -15220,6 +15858,34 @@ XOR_sum: xor_sum[i:k] = pre_xor_sum[k] ^ pre_xor_sum[i - 1]
 ```
 
 
+
+## [6471. Minimum Operations to Make the Integer Zero](https://leetcode.com/problems/minimum-operations-to-make-the-integer-zero/)
+
+```java
+public int makeTheIntegerZero(int num1, int num2) {
+    long left = num1;
+    int res = 0;
+    if (num2 < 0) {
+        while (true) {
+            left = left - num2;
+            res++;
+            int bitCount = Long.bitCount(left);
+            if (res >= bitCount) return res;
+        }
+    } else {
+        int min_sum = 0;
+        while (left > 0) {
+            min_sum += 1;
+            left -= num2;
+            if (min_sum > left) return -1;
+            res++;
+            int bitCount = Long.bitCount(left);
+            if (res >= bitCount) return res;
+        }
+    }
+    return -1;
+}
+```
 
 
 
