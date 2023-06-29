@@ -7214,6 +7214,104 @@ public class MaximumCompatibilityScoreSum {
 
 
 
+## [1066. Campus Bikes II](https://leetcode.com/problems/campus-bikes-ii/)
+
+```java
+// 1066. Campus Bikes II
+public class CampusBikesII {
+    public int assignBikes(int[][] workers, int[][] bikes) {
+        // state: i-th bit represents is the worker assigned bike
+        // dp[i][s]: the minimum possible sum of Manhattan distances between each worker and their assigned bike for the first i bikes and people in state s
+        int n = workers.length;
+        int m = bikes.length;
+        int nState = 1 << n;
+        int[][] manhattan_dist = new int[m][n];
+        int[][] dp = new int[m + 1][nState];
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                manhattan_dist[i][j] = Math.abs(workers[j][0] - bikes[i][0]) + Math.abs(workers[j][1] - bikes[i][1]);
+            }
+        }
+        Arrays.fill(dp[0], Integer.MAX_VALUE / 2);
+        dp[0][0] = 0;
+        for (int i = 1; i <= m; i++) {
+            dp[i] = Arrays.copyOf(dp[i - 1], nState);
+            for (int state = 0; state < nState; state++) {
+                for (int worker = 0; worker < n; worker++) {
+                    int subset = 1 << worker;
+                    if ((subset & state) != subset) continue;
+                    if (dp[i - 1][state - subset] == Integer.MAX_VALUE / 2) continue;
+                    dp[i][state] = Math.min(dp[i][state], dp[i - 1][state - subset] + manhattan_dist[(i - 1)][worker]);
+                }
+            }
+        }
+        return dp[m][nState - 1];
+    }
+}
+```
+
+
+
+
+
+## [2172. Maximum AND Sum of Array](https://leetcode.com/problems/maximum-and-sum-of-array/)
+
+```java
+// 2172. Maximum AND Sum of Array
+public class MaximumANDSumOfArray {
+    int m;
+
+    public int maximumANDSum(int[] nums, int numSlots) {
+        // states: i-th bit represents the status of i-th slots, 0 means no number, 1 means 1 number, 2 means 2 numbers
+        // dp[i][s]: the maximum possible AND sum for the first i numbers, and the states of slots is s
+        // The number is the items, we can take them one by one.
+        int n = nums.length;
+        this.m = numSlots;
+        int nState = (int) Math.pow(3, numSlots);
+        int[][] dp = new int[n + 1][nState];
+        Arrays.fill(dp[0], -1);
+        dp[0][0] = 0;
+        for (int state = 0; state < nState; state++) {
+            // we can get the current number according to state, so there is no need to iterate nums as the outer loop
+            int i = 0;
+            int temp = state;
+            while (temp > 0) {
+                i += temp % 3;
+                temp /= 3;
+            }
+            // it is possible that numSlots * 2 > nums.length
+            if (i > n) continue;
+            for (int slot_index = 0; slot_index < numSlots; slot_index++) {
+                if (!isValidSubset(state, slot_index)) continue;
+                int subset = (int) Math.pow(3, slot_index);
+                if (dp[i - 1][state - subset] == -1) continue;
+                dp[i][state] = Math.max(dp[i][state], dp[i - 1][state - subset] + (nums[i - 1] & (slot_index + 1)));
+            }
+        }
+        int res = -1;
+        for (int i = 0; i < nState; i++) {
+            res = Math.max(res, dp[n][i]);
+        }
+        return res;
+    }
+
+    private boolean isValidSubset(int state, int index) {
+        for (int i = 0; i < m; i++) {
+            if (i == index) {
+                if (state % 3 != 0) return true;
+                break;
+            }
+            state /= 3;
+        }
+        return false;
+    }
+}	
+```
+
+
+
+
+
 # Monotonic Stack
 
 **通常是一维数组，要寻找任一个元素的右边或者左边第一个比自己大或者小的元素的位置，此时我们就要想到可以用单调栈了**。
@@ -7761,6 +7859,62 @@ public int maximalRectangle(char[][] matrix) {
 ![image-20220809143538741](https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/image-20220809143538741.png)
 
 我们只需要一层层去创建对应的heights[]数组然后再用之前计算最大矩阵面积的方法去计算出每一层柱状图的最大矩阵面积最后进行比较即可。
+
+
+
+## [6891. Robot Collisions](https://leetcode.com/problems/robot-collisions/)
+
+```java
+// 6891. Robot Collisions
+public class RobotCollisions {
+    public List<Integer> survivedRobotsHealths(int[] positions, int[] healths, String directions) {
+        int n = positions.length;
+        PriorityQueue<AbstractMap.SimpleEntry<Integer, Integer>> robots_priority = new PriorityQueue<>((o1, o2) -> o1.getValue() - o2.getValue());
+        Deque<Integer> robots_deque = new LinkedList<>();
+        for (int i = 0; i < n; i++) {
+            offer2Queue(robots_priority, i, positions);
+        }
+        while (!robots_priority.isEmpty()) {
+            AbstractMap.SimpleEntry<Integer, Integer> entry = robots_priority.poll();
+            Integer robot = entry.getKey();
+            // collide all possible robots, so using while to iterate
+            while (!robots_deque.isEmpty() && directions.charAt(robots_deque.peekLast()) == 'R' && directions.charAt(robot) == 'L' && healths[robot] > healths[robots_deque.peekLast()]) {
+                healths[robots_deque.peekLast()] = 0;
+                healths[robot]--;
+                robots_deque.pollLast();
+            }
+            if (robots_deque.isEmpty()) {
+                robots_deque.offerLast(robot);
+                continue;
+            }
+            if (directions.charAt(robots_deque.peekLast()) != 'R' || directions.charAt(robot) != 'L') {
+                robots_deque.offerLast(robot);
+            } else {
+                if (healths[robot] < healths[robots_deque.peekLast()]) {
+                    healths[robots_deque.peekLast()]--;
+                    healths[robot] = 0;
+                } else if (healths[robot] == healths[robots_deque.peekLast()]) {
+                    healths[robots_deque.peekLast()] = 0;
+                    healths[robot] = 0;
+                    robots_deque.pollLast();
+                }
+            }
+        }
+        List<Integer> res = new ArrayList<>();
+        for (int health : healths) {
+            if (health != 0) {
+                res.add(health);
+            }
+        }
+        return res;
+    }
+
+    private void offer2Queue(PriorityQueue<AbstractMap.SimpleEntry<Integer, Integer>> robots, int i, int[] positions) {
+        AbstractMap.SimpleEntry<Integer, Integer> entry = new AbstractMap.SimpleEntry<>(i, positions[i]);
+        robots.offer(entry);
+    }
+}
+```
 
 
 
@@ -11421,12 +11575,6 @@ return diffQueue.peek().getKey();
 
 
 
-
-
-
-
-
-
 # Topological Sort
 
 ## [0207. 课程表](https://leetcode.cn/problems/course-schedule/)
@@ -12183,6 +12331,71 @@ public class Solution13 {
 ```
 
 
+
+## [2127. Maximum Employees to Be Invited to a Meeting](https://leetcode.com/problems/maximum-employees-to-be-invited-to-a-meeting/)
+
+```java
+// 2127. Maximum Employees to Be Invited to a Meeting
+public class MaximumEmployees2BeInvited2AMeeting {
+    public int maximumInvitations(int[] favorite) {
+        // favorite is the adjacency table in this context
+        // two ways that form a circular table:
+        // 1. a cycle of graph
+        // 2. all cycles of length 2, each cycle may be followed by at most two chains
+        int n = favorite.length;
+        int[] indegrees = new int[n];
+        int[] depths = new int[n];
+        for (int i = 0; i < n; i++) {
+            indegrees[favorite[i]]++;
+        }
+        Deque<Integer> deque = new LinkedList<>();
+        for (int i = 0; i < n; i++) {
+            if (indegrees[i] == 0) {
+                deque.offerLast(i);
+            }
+            // each node firstly have depth
+            depths[i] = 1;
+        }
+        while (!deque.isEmpty()) {
+            int len = deque.size();
+            for (int i = 0; i < len; i++) {
+                Integer cur_node = deque.pollFirst();
+                int next = favorite[cur_node];
+                depths[next] = Math.max(depths[next], depths[cur_node] + 1);
+                indegrees[next]--;
+                if (indegrees[next] == 0) deque.offerLast(next);
+            }
+        }
+        // find loops
+        int res = findLoops2ConstructMaxCircularTable(indegrees, depths, favorite);
+        return res;
+    }
+
+    private int findLoops2ConstructMaxCircularTable(int[] indegrees, int[] depths, int[] favorite) {
+        int n = indegrees.length;
+        int sumOfLoopsOfLengthEQ2 = 0;
+        int maxLoopOfLengthGE3 = 0;
+        for (int i = 0; i < n; i++) {
+            while (indegrees[i] != 0) {
+                indegrees[i]--;
+                int temp_node = i;
+                int loop_n = 1;
+                while (favorite[temp_node] != i) {
+                    loop_n++;
+                    temp_node = favorite[temp_node];
+                    indegrees[temp_node]--;
+                }
+                if (loop_n == 2) {
+                    sumOfLoopsOfLengthEQ2 += depths[i] + depths[temp_node];
+                } else {
+                    maxLoopOfLengthGE3 = Math.max(maxLoopOfLengthGE3, loop_n);
+                }
+            }
+        }
+        return Math.max(maxLoopOfLengthGE3, sumOfLoopsOfLengthEQ2);
+    }
+}
+```
 
 
 
@@ -15817,7 +16030,7 @@ for (int state = 0; state < nState; state++) {
 
 ```java
 // return true means have no both 1 in the same index for all indexes
-// return false means have at least both 1 in the same index
+// return false means have at least one index with both 1
 s1 + s2 == (s1 ^ s2)
 // Example: 
 // (101 + 110 = 1011) != ((101 ^ 110) = 011)
