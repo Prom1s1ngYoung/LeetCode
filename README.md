@@ -1,10 +1,15 @@
 # LeetCode NoteBook
 
-**<u>继Solution76之后的笔记，其余详见notability</u>**
-
-**目前开始跟进刷残酷刷题群的每日打卡题**
-
 https://docs.google.com/spreadsheets/d/1kBGyRsSdbGDu7DzjQcC-UkZjZERdrP8-_QyVGXHSrB8/edit#gid=0
+
+**Tips**
+
+1. 数组不变，求区间和：「前缀和」、「树状数组」、「线段树」
+
+2. 多次修改某个数（单点），求区间和：「树状数组」、「线段树」
+3. 多次修改某个区间，输出最终结果：「差分」
+4. 多次修改某个区间，求区间和：「线段树」、「树状数组」（看修改区间范围大小）
+5. 多次将某个区间变成同一个数，求区间和：「线段树」、「树状数组」（看修改区间范围大小）
 
 # Table Of Content
 
@@ -917,13 +922,105 @@ public class Solution9 {
 
 
 
+# Segment Tree | Binary Indexed Tree
+
+## Segment Tree Template
+
+```java
+public class SegmentTreeNode {
+    public SegmentTreeNode left;
+    public SegmentTreeNode right;
+    public int start, end;
+    public int info;
+
+    public SegmentTreeNode(int start, int end) {
+        this.start = start;
+        this.end = end;
+        this.info = 0;
+        this.left = null;
+        this.right = null;
+    }
+
+    public void init(SegmentTreeNode node, int start, int end) {
+        if (start == end) {
+            // node.info = external data
+            return;
+        }
+        int mid = (start + end) / 2;
+        if (node.left == null) {
+            node.left = new SegmentTreeNode(start, mid);
+            node.right = new SegmentTreeNode(mid + 1, end);
+        }
+        init(node.left, start, mid);
+        init(node.right, mid + 1, end);
+        node.info = node.left.info + node.right.info;
+    }
+
+    public void updateSingle(SegmentTreeNode node, int idx, int val) {
+        if (idx < node.start || idx > node.end) return;
+        if (node.start == node.end) {
+            node.info = val;
+            return;
+        }
+        updateSingle(node.left, idx, val);
+        updateSingle(node.right, idx, val);
+        node.info = node.left.info + node.right.info;
+    }
+
+    public int queryRange(SegmentTreeNode node, int start, int end) {
+        if (end < node.start || start > node.end) {
+            // maybe tricky, need to consider the content
+            return 0;
+        }
+        if (start <= node.start && end >= node.end) return node.info;
+        return queryRange(node.left, start, end) + queryRange(node.right, start, end);
+    }
+}
+```
 
 
 
+## Binary Indexed Tree Template
 
+https://blog.csdn.net/qq_40941722/article/details/104406126
 
+```java
+// 上来先把三个方法写出来
+{
+    int[] tree;
+    int lowbit(int x) {
+        return x & -x;
+    }
+    // 查询前缀和的方法
+    int query(int x) {
+        int ans = 0;
+        for (int i = x; i > 0; i -= lowbit(i)) ans += tree[i];
+        return ans;
+    }
+    // 在树状数组 x 位置中增加值 u
+    void add(int x, int u) {
+        for (int i = x; i <= n; i += lowbit(i)) tree[i] += u;
+    }
+}
 
+// 初始化「树状数组」，要默认数组是从 1 开始
+{
+    for (int i = 0; i < n; i++) add(i + 1, nums[i]);
+}
 
+// 使用「树状数组」：
+{   
+    void update(int i, int val) {
+        // 原有的值是 nums[i]，要使得修改为 val，需要增加 val - nums[i]
+        add(i + 1, val - nums[i]); 
+        nums[i] = val;
+    }
+    
+    int sumRange(int l, int r) {
+        return query(r + 1) - query(l);
+    }
+}
+```
 
 
 
@@ -5845,7 +5942,7 @@ public class PaintFence {
 
 
 
-# Bit Masks & DP
+# Bit Mask
 
 ## [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
 
@@ -7312,6 +7409,10 @@ public class MaximumANDSumOfArray {
 
 
 
+## [2397. Maximum Rows Covered by Columns](https://leetcode.com/problems/maximum-rows-covered-by-columns/)
+
+
+
 # Monotonic Stack
 
 **通常是一维数组，要寻找任一个元素的右边或者左边第一个比自己大或者小的元素的位置，此时我们就要想到可以用单调栈了**。
@@ -7917,6 +8018,67 @@ public class RobotCollisions {
 ```
 
 
+
+## [6911. Continuous Subarrays](https://leetcode.com/problems/continuous-subarrays/)
+
+1. Use two monotonous deques $upper,lower$ to maintain the max and min
+
+   Use max deque as example:
+
+   1. It should be in descending order. For a new element, if it has a greater value then the rightmost's value, the rightmost in the deque should be popped until the rightmost element is greater than the current value. Because we only focus on the maximum value.
+   2. Always keep the index $s$ of the latest popped value, we also need to update the min deque, the element with index smaller than $s$ should be polled (from leftmost).
+
+2. If current value is greater than the maximum value by 2 or the minimum value is greater than the current value by 2. 
+
+   1. Update left pointer until break the rule
+
+   2. Update result:
+
+      `res += (long) (right - left + 1) * (right - left) / 2 - (right - dest + 1) * (right - dest) / 2;`
+
+```java
+public long continuousSubarrays(int[] nums) {
+    int left = 0, right = 0;
+    long res = 0;
+    Deque<Integer> upper = new LinkedList<>();
+    Deque<Integer> lower = new LinkedList<>();
+    while (right < nums.length) {
+        int cur = nums[right];
+        while (!lower.isEmpty() && nums[lower.peekLast()] >= cur) {
+            lower.pollLast();
+        }
+        lower.offerLast(right);
+        while (!upper.isEmpty() && nums[upper.peekLast()] <= cur) {
+            upper.pollLast();
+        }
+        upper.offerLast(right);
+        if (!lower.isEmpty() && cur - nums[lower.peekFirst()] > 2) {
+            int dest = 0;
+            while (!lower.isEmpty() && cur - nums[lower.peekFirst()] > 2) {
+                dest = lower.pollFirst() + 1;
+            }
+            res += (long) (right - left + 1) * (right - left) / 2 - (right - dest + 1) * (right - dest) / 2;
+            left = dest;
+            while (!upper.isEmpty() && upper.peekFirst() < left) {
+                upper.pollFirst();
+            }
+        } else if (!upper.isEmpty() && nums[upper.peekFirst()] - cur > 2) {
+            int dest = 0;
+            while (!upper.isEmpty() && nums[upper.peekFirst()] - cur > 2) {
+                dest = upper.pollFirst() + 1;
+            }
+            res += (long) (right - left + 1) * (right - left) / 2 - (right - dest + 1) * (right - dest) / 2;
+            left = dest;
+            while (!lower.isEmpty() && lower.peekFirst() < left) {
+                lower.pollFirst();
+            }
+        }
+        right++;
+    }
+    res += (long) (right - left + 1) * (right - left) / 2;
+    return res;
+}
+```
 
 
 
@@ -9436,6 +9598,75 @@ public int isPrefixOfWord(String sentence, String searchWord) {
 
 
 
+## [68. Text Justification](https://leetcode.com/problems/text-justification/)
+
+```java
+// 68. Text Justification
+public class TextJustification {
+    public List<String> fullJustify(String[] words, int maxWidth) {
+        // two pointers to iterate the whole array
+        // update cur_width and check if next word can be added to current line
+        // There must be one space between two word, so to check if next word can be added to current line could according to:
+        // cur_width + words[right].length() + n_words <= maxWidth
+        int n = words.length;
+        int left = 0, right = 0;
+        int cur_width = 0;
+        int n_words = 0;
+        List<String> res = new ArrayList<>();
+        while (right < n) {
+            if (cur_width == 0) {
+                cur_width += words[right].length();
+                n_words++;
+                right++;
+            } else if (cur_width + words[right].length() + n_words <= maxWidth) {
+                cur_width += words[right].length();
+                n_words++;
+                right++;
+            } else {
+                StringBuilder sb = new StringBuilder();
+                if (n_words == 1) {
+                    int spaces = maxWidth - cur_width;
+                    sb.append(words[left]);
+                    sb.append(" ".repeat(spaces));
+                } else {
+                    int extra_space = (maxWidth - cur_width) % (n_words - 1);
+                    int base_space = (maxWidth - cur_width) / (n_words - 1);
+                    for (int i = left; i < right; i++) {
+                        sb.append(words[i]);
+                        if (i != right - 1) {
+                            int spaces = base_space;
+                            if (extra_space != 0) {
+                                spaces++;
+                                extra_space--;
+                            }
+                            String emptySpaces = " ".repeat(spaces);
+                            sb.append(emptySpaces);
+                        }
+                    }
+                }
+                res.add(sb.toString());
+                left = right;
+                cur_width = 0;
+                n_words = 0;
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = left; i < right; i++) {
+            sb.append(words[i]);
+            if (i != right - 1) {
+                sb.append(" ");
+            } else {
+                int spaces = maxWidth - cur_width - (n_words - 1);
+                String emptySpaces = " ".repeat(spaces);
+                sb.append(emptySpaces);
+            }
+        }
+        res.add(sb.toString());
+        return res;
+    }
+}
+```
+
 
 
 
@@ -10714,15 +10945,69 @@ DFS与BFS相比，DFS用时更短。
 
 
 
+## [2101. Detonate the Maximum Bombs](https://leetcode.com/problems/detonate-the-maximum-bombs/)
+
+```java
+// 2101. Detonate the Maximum Bombs
+public class DetonateTheMaximumBombs {
+    int n;
+
+    public int maximumDetonation(int[][] bombs) {
+        n = bombs.length;
+        Map<Integer, List<Integer>> adjacencyTable = new HashMap<>();
+        createGraph(n, adjacencyTable, bombs);
+        return bfs(adjacencyTable, n);
+    }
+
+    private int bfs(Map<Integer, List<Integer>> adjacencyTable, int n) {
+        int res = 0;
+        for (int start = 0; start < n; start++) {
+            boolean[] visited = new boolean[n];
+            Arrays.fill(visited, false);
+            Queue<Integer> queue = new LinkedList<>();
+            queue.add(start);
+            visited[start] = true;
+            while (!queue.isEmpty()) {
+                Integer source = queue.poll();
+                List<Integer> neighbours = adjacencyTable.getOrDefault(source, new ArrayList<>());
+                for (Integer neighbour : neighbours) {
+                    if (visited[neighbour]) continue;
+                    queue.add(neighbour);
+                    visited[neighbour] = true;
+                }
+            }
+            int count = 0;
+            for (boolean isVisited : visited) {
+                if (isVisited) count++;
+            }
+            res = Math.max(res, count);
+        }
+        return res;
+    }
 
 
-
-
-
-
-
-
-
+    private void createGraph(int n, Map<Integer, List<Integer>> adjacencyTable, int[][] bombs) {
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = i + 1; j < n; j++) {
+                long x_diff = Math.abs(bombs[i][0] - bombs[j][0]);
+                long y_diff = Math.abs(bombs[i][1] - bombs[j][1]);
+                long r_a = bombs[i][2];
+                long r_b = bombs[j][2];
+                if (r_a * r_a >= x_diff * x_diff + y_diff * y_diff) {
+                    List<Integer> neighbours = adjacencyTable.getOrDefault(i, new ArrayList<>());
+                    neighbours.add(j);
+                    adjacencyTable.put(i, neighbours);
+                }
+                if (r_b * r_b >= x_diff * x_diff + y_diff * y_diff) {
+                    List<Integer> neighbours = adjacencyTable.getOrDefault(j, new ArrayList<>());
+                    neighbours.add(i);
+                    adjacencyTable.put(j, neighbours);
+                }
+            }
+        }
+    }
+}
+```
 
 
 
@@ -10730,6 +11015,14 @@ DFS与BFS相比，DFS用时更短。
 
 # Dijkstra's Algorithm
 
+> It is a greedy algorithm
+>
+> Use two collections to store the vertices that have been chosen and have not been chosen
+>
+> Start from the source vertex, firstly there is only one vertex that can link to source node, that is itself.
+>
+> Each time find the smallest path.
+>
 > Two ways to calculate:
 >
 > 1. E * logE (E means the number of edges)
@@ -10738,8 +11031,6 @@ DFS与BFS相比，DFS用时更短。
 > You can check the example question 743. Network Delay Time for understanding the above two methods.
 
 ## [743. Network Delay Time](https://leetcode.com/problems/network-delay-time/)
-
-**E * logE**
 
 ```java
 public int networkDelayTime(int[][] times, int n, int k) {
@@ -10774,15 +11065,520 @@ public int networkDelayTime(int[][] times, int n, int k) {
 
 
 
+## [1368. Minimum Cost to Make at Least One Valid Path in a Grid](https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/)
+
+```java
+// 1368. Minimum Cost to Make at Least One Valid Path in a Grid
+public class MinimumCost2MakeAtLeastOneValidPathInAGrid {
+    int[] heads, edges, nexts, weights, dist;
+    boolean[] visited;
+    int idx = 0;
+    public int minCost(int[][] grid) {
+        int n = grid.length;
+        int m = grid[0].length;
+        int size = n * m;
+        int M = 40000;
+        heads = new int[size];
+        dist = new int[size];
+        visited = new boolean[size];
+        edges = new int[M];
+        nexts = new int[M];
+        weights = new int[M];
+        Arrays.fill(heads, -1);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                int node_source = i * m + j;
+                if (i - 1 >= 0) {
+                    int node_dest = (i - 1) * m + j;
+                    add(node_source, node_dest, grid[i][j] == 4 ? 0 : 1);
+                }
+                if (i + 1 < n) {
+                    int node_dest = (i + 1) * m + j;
+                    add(node_source, node_dest, grid[i][j] == 3 ? 0 : 1);
+                }
+                if (j - 1 >= 0) {
+                    int node_dest = i * m + (j - 1);
+                    add(node_source, node_dest, grid[i][j] == 2 ? 0 : 1);
+                }
+                if (j + 1 < m) {
+                    int node_dest = i * m + (j + 1);
+                    add(node_source, node_dest, grid[i][j] == 1 ? 0 : 1);
+                }
+            }
+        }
+        dijkstra();
+        return dist[size - 1];
+    }
+
+    private void dijkstra() {
+        Arrays.fill(visited, false);
+        Arrays.fill(dist, Integer.MAX_VALUE / 2);
+        dist[0] = 0;
+        PriorityQueue<int[]> pq = new PriorityQueue<>((o1, o2) -> o1[1] - o2[1]);
+        pq.offer(new int[]{0, 0});
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int id = poll[0];
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = edges[i];
+                if (dist[neighbour] > dist[id] + weights[i]) {
+                    dist[neighbour] = dist[id] + weights[i];
+                    pq.offer(new int[]{neighbour, dist[neighbour]});
+                }
+            }
+        }
+    }
+
+    private void add(int a, int b, int c) {
+        edges[idx] = b;
+        nexts[idx] = heads[a];
+        heads[a] = idx;
+        weights[idx] = c;
+        idx++;
+    }
+}
+```
 
 
 
+## [778. Swim in Rising Water](https://leetcode.com/problems/swim-in-rising-water/)
 
-## [778. Swim in Rising Water](https://leetcode.cn/problems/swim-in-rising-water/)
+```java
+// 778. Swim in Rising Water
+public class SwimInRisingWater {
+    int[] heads, nexts, dests, weights, dists;
+    boolean[] visited;
+    int idx = 0;
+
+    public int swimInWater(int[][] grid) {
+        int n = grid.length;
+        int m = grid[0].length;
+        int size = m * n;
+        int M = 50 * 50 * 4;
+        heads = new int[size];
+        dists = new int[size];
+        visited = new boolean[size];
+        nexts = new int[M];
+        dests = new int[M];
+        weights = new int[M];
+        Arrays.fill(heads, -1);
+        Arrays.fill(visited, false);
+        Arrays.fill(dists, Integer.MAX_VALUE / 2);
+        dists[0] = grid[0][0];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                int source_node = i * m + j;
+                if (i - 1 >= 0) {
+                    int dest_node = (i - 1) * m + j;
+                    add(source_node, dest_node, grid[i - 1][j]);
+                }
+                if (i + 1 < n) {
+                    int dest_node = (i + 1) * m + j;
+                    add(source_node, dest_node, grid[i + 1][j]);
+                }
+                if (j - 1 >= 0) {
+                    int dest_node = i * m + (j - 1);
+                    add(source_node, dest_node, grid[i][j - 1]);
+                }
+                if (j + 1 < m) {
+                    int dest_node = i * m + (j + 1);
+                    add(source_node, dest_node, grid[i][j + 1]);
+                }
+            }
+        }
+        dijkstra();
+        return dists[size - 1];
+    }
+
+    private void dijkstra() {
+        PriorityQueue<int[]> pq = new PriorityQueue<>((o1, o2) -> o1[1] - o2[1]);
+        pq.offer(new int[]{0, dists[0]});
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int id = poll[0];
+            int distance = poll[1];
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = dests[i];
+                if (dists[neighbour] > Math.max(dists[id], weights[i])) {
+                    dists[neighbour] = Math.max(dists[id], weights[i]);
+                    pq.offer(new int[]{neighbour, dists[neighbour]});
+                }
+            }
+        }
+    }
+
+    private void add(int a, int b, int c) {
+        dests[idx] = b;
+        nexts[idx] = heads[a];
+        heads[a] = idx;
+        weights[idx] = c;
+        idx++;
+    }
+}
+```
 
 
 
+## [2203. Minimum Weighted Subgraph With the Required Paths](https://leetcode.com/problems/minimum-weighted-subgraph-with-the-required-paths/)
 
+Use dijkstra to find $src1$, $src2$ and $dest$ shortest path, for $dest$ node, we need to use the backward adjacency table.
+
+```java
+// 2203. Minimum Weighted Subgraph With the Required Paths
+public class MinimumWeightedSubgraphWithTheRequiredPaths {
+    int[] heads, dests, nexts, weights;
+    boolean[] visited;
+    int idx;
+    long INF = Long.MAX_VALUE / 2;
+    int _n, _m;
+
+    public long minimumWeight(int n, int[][] edges, int src1, int src2, int dest) {
+        _n = n;
+        _m = edges.length;
+        long[] aDists = new long[n];
+        long[] bDists = new long[n];
+        long[] cDists = new long[n];
+        initForwardAdjacencyTable(edges);
+        dijkstra(aDists, src1);
+        dijkstra(bDists, src2);
+        initBackwardAdjacencyTable(edges);
+        dijkstra(cDists, dest);
+        long res = INF;
+        for (int i = 0; i < n; i++) {
+            if (aDists[i] == INF || bDists[i] == INF || cDists[i] == INF) continue;
+            res = Math.min(res, aDists[i] + bDists[i] + cDists[i]);
+        }
+        return res == INF ? -1 : res;
+    }
+
+    private void dijkstra(long[] dists, int src) {
+        visited = new boolean[_n];
+        Arrays.fill(dists, INF);
+        dists[src] = 0;
+        Arrays.fill(visited, false);
+        PriorityQueue<long[]> pq = new PriorityQueue<>((o1, o2) -> Math.toIntExact(o1[1] - o2[1]));
+        pq.offer(new long[]{src, dists[src]});
+        while (!pq.isEmpty()) {
+            long[] poll = pq.poll();
+            int id = (int) poll[0];
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = dests[i];
+                if (dists[neighbour] > dists[id] + weights[i]) {
+                    dists[neighbour] = dists[id] + weights[i];
+                    pq.offer(new long[]{neighbour, dists[neighbour]});
+                }
+            }
+        }
+    }
+
+    private void initForwardAdjacencyTable(int[][] edges) {
+        heads = new int[_n];
+        Arrays.fill(heads, -1);
+        dests = new int[_m];
+        nexts = new int[_m];
+        weights = new int[_m];
+        idx = 0;
+        for (int[] edge : edges) {
+            int source = edge[0];
+            int dest = edge[1];
+            int weight = edge[2];
+            add(source, dest, weight);
+        }
+    }
+
+    private void initBackwardAdjacencyTable(int[][] edges) {
+        heads = new int[_n];
+        Arrays.fill(heads, -1);
+        dests = new int[_m];
+        nexts = new int[_m];
+        weights = new int[_m];
+        idx = 0;
+        for (int[] edge : edges) {
+            int dest = edge[0];
+            int source = edge[1];
+            int weight = edge[2];
+            add(source, dest, weight);
+        }
+    }
+
+    private void add(int a, int b, int c) {
+        dests[idx] = b;
+        nexts[idx] = heads[a];
+        heads[a] = idx;
+        weights[idx] = c;
+        idx++;
+    }
+}
+```
+
+
+
+## [1514. Path with Maximum Probability](https://leetcode.com/problems/path-with-maximum-probability/)
+
+```java
+// 1514. Path with Maximum Probability
+public class PathWithMaximumProbability {
+    int[] heads, nexts, dests;
+    double[] weights, dists;
+    boolean[] visited;
+    int idx;
+    int _n, _m, M;
+
+    public double maxProbability(int n, int[][] edges, double[] succProb, int start_node, int end_node) {
+        _n = n;
+        _m = edges.length;
+        M = _m * 2;
+        initAdjacencyTable(edges, succProb);
+        dijkstra(start_node);
+        return dists[end_node];
+    }
+
+    private void dijkstra(int start) {
+        dists = new double[_n];
+        visited = new boolean[_n];
+        Arrays.fill(dists, 0);
+        dists[start] = 1;
+        Arrays.fill(visited, false);
+        PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>((o1, o2) -> o2.getValue().compareTo(o1.getValue()));
+        pq.offer(new Pair<>(start, dists[start]));
+        while (!pq.isEmpty()) {
+            Pair<Integer, Double> poll = pq.poll();
+            Integer id = poll.getKey();
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = dests[i];
+                // The first path use sum function, and the later use times function
+                if (dists[neighbour] < dists[id] * weights[i]) {
+                    dists[neighbour] = dists[id] * weights[i];
+                    pq.offer(new Pair<>(neighbour, dists[neighbour]));
+                }
+            }
+        }
+    }
+
+    private void initAdjacencyTable(int[][] edges, double[] succProb) {
+        idx = 0;
+        heads = new int[_n];
+        Arrays.fill(heads, -1);
+        nexts = new int[M];
+        dests = new int[M];
+        weights = new double[M];
+        for (int i = 0; i < _m; i++) {
+            int a_node = edges[i][0];
+            int b_node = edges[i][1];
+            double weight = succProb[i];
+            add(a_node, b_node, weight);
+            add(b_node, a_node, weight);
+        }
+    }
+
+    private void add(int src, int dest, double weight) {
+        dests[idx] = dest;
+        nexts[idx] = heads[src];
+        heads[src] = idx;
+        weights[idx] = weight;
+        idx++;
+    }
+}
+```
+
+
+
+## [505. The Maze II](https://leetcode.com/problems/the-maze-ii/)
+
+```java
+// 505. The Maze II
+public class TheMazeII {
+    int[] heads, nexts, dests, weights, dists;
+    boolean[] visited;
+    int n, m, idx;
+    int INF = Integer.MAX_VALUE / 2;
+    public int shortestDistance(int[][] maze, int[] start, int[] destination) {
+        n = maze.length;
+        m = maze[0].length;
+        initalAdjacencyTable(maze);
+        int source = start[0] * m + start[1];
+        dijkstra(source);
+        int dest = destination[0] * m + destination[1];
+        return dists[dest] == INF ? -1 : dists[dest];
+    }
+
+    private void dijkstra(int source) {
+        dists = new int[n * m];
+        Arrays.fill(dists, INF);
+        dists[source] = 0;
+        visited = new boolean[n * m];
+        Arrays.fill(visited, false);
+        PriorityQueue<int[]> pq = new PriorityQueue<>((o1, o2) -> o1[1] - o2[1]);
+        pq.offer(new int[]{source, dists[source]});
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int id = poll[0];
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = dests[i];
+                if (dists[neighbour] > dists[id] + weights[i]) {
+                    dists[neighbour] = dists[id] + weights[i];
+                    pq.offer(new int[]{neighbour, dists[neighbour]});
+                }
+            }
+        }
+    }
+
+    private void initalAdjacencyTable(int[][] maze) {
+        int n_edge = 4 * n * m;
+        idx = 0;
+        heads = new int[n * m];
+        Arrays.fill(heads, -1);
+        nexts = new int[n_edge];
+        dests = new int[n_edge];
+        weights = new int[n_edge];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                int start_id = i * m + j;
+                if (maze[i][j] == 1) continue;
+                int[] end_up = rolling(i, j, "up", maze);
+                if (end_up[0] != start_id) add(start_id, end_up[0], end_up[1]);
+                int[] end_down = rolling(i, j, "down", maze);
+                if (end_down[0] != start_id) add(start_id,end_down[0], end_down[1]);
+                int[] end_left = rolling(i, j, "left", maze);
+                if (end_left[0] != start_id) add(start_id, end_left[0], end_left[1]);
+                int[] end_right = rolling(i, j, "right", maze);
+                if (end_right[0] != start_id) add(start_id, end_right[0], end_right[1]);
+            }
+        }
+    }
+
+    private int[] rolling(int i, int j, String direct, int[][] maze) {
+        int[] res = new int[2];
+        int weight = -1;
+        switch (direct) {
+            case "left":
+                while (j >= 0 && maze[i][j] == 0) {
+                    weight++;
+                    j--;
+                }
+                res[0] = i * m + (j + 1);
+                break;
+            case "right":
+                while (j < m && maze[i][j] == 0) {
+                    weight++;
+                    j++;
+                }
+                res[0] = i * m + (j - 1);
+                break;
+            case "up":
+                while (i >= 0 && maze[i][j] == 0) {
+                    weight++;
+                    i--;
+                }
+                res[0] = (i + 1) * m + j;
+                break;
+            case "down":
+                while (i < n && maze[i][j] == 0) {
+                    weight++;
+                    i++;
+                }
+                res[0] = (i - 1) * m + j;
+                break;
+        }
+        res[1] = weight;
+        return res;
+    }
+
+    private void add(int source, int dest, int w) {
+        dests[idx] = dest;
+        nexts[idx] = heads[source];
+        heads[source] = idx;
+        weights[idx] = w;
+        idx++;
+    }
+}
+```
+
+
+
+## [1976. Number of Ways to Arrive at Destination](https://leetcode.com/problems/number-of-ways-to-arrive-at-destination/)
+
+```java
+// 1976. Number of Ways to Arrive at Destination
+public class NumberOfWays2ArriveAtDestination {
+    int[] heads, nexts, dests, weights, paths;
+    long[] dists;
+    int idx;
+    long INF = Long.MAX_VALUE;
+    int MOD = (int) 1e9 + 7;
+
+    public int countPaths(int n, int[][] roads) {
+        int m = roads.length;
+        int n_edge = 2 * m;
+        createGraph(n, n_edge, roads);
+        int res = dijkstra(n);
+        return res;
+    }
+
+    private int dijkstra(int n) {
+        paths = new int[n];
+        paths[0] = 1;
+        dists = new long[n];
+        Arrays.fill(dists, INF);
+        dists[0] = 0;
+        boolean[] visited = new boolean[n];
+        Arrays.fill(visited, false);
+        PriorityQueue<Pair<Integer, Long>> pq = new PriorityQueue<>((o1, o2) -> o1.getValue().compareTo(o2.getValue()));
+        pq.offer(new Pair<>(0, dists[0]));
+        while (!pq.isEmpty()) {
+            Pair<Integer, Long> poll = pq.poll();
+            int id = poll.getKey();
+            if (visited[id]) continue;
+            visited[id] = true;
+            for (int i = heads[id]; i != -1; i = nexts[i]) {
+                int neighbour = dests[i];
+                if (dists[neighbour] > dists[id] + weights[i]) {
+                    dists[neighbour] = dists[id] + weights[i];
+                    paths[neighbour] = paths[id];
+                    pq.offer(new Pair<>(neighbour, dists[neighbour]));
+                } else if (dists[neighbour] == dists[id] + weights[i]) {
+                    paths[neighbour] = (paths[neighbour] + paths[id]) % MOD;
+                }
+            }
+        }
+        return paths[n - 1];
+    }
+
+    private void createGraph(int n, int n_edge, int[][] roads) {
+        idx = 0;
+        heads = new int[n];
+        Arrays.fill(heads, -1);
+        nexts = new int[n_edge];
+        dests = new int[n_edge];
+        weights = new int[n_edge];
+        for (int[] road : roads) {
+            int node_a = road[0];
+            int node_b = road[1];
+            int weight = road[2];
+            add(node_a, node_b, weight);
+            add(node_b, node_a, weight);
+        }
+    }
+
+    private void add(int source, int dest, int weight) {
+        dests[idx] = dest;
+        nexts[idx] = heads[source];
+        heads[source] = idx;
+        weights[idx] = weight;
+        idx++;
+    }
+}
+```
 
 
 
@@ -11572,6 +12368,72 @@ return diffQueue.peek().getKey();
 定义一个优先队列，队列里面存的Pair中key是该块目前每一份的间距，value是该块目前已经被分成的份数
 
 优先队列的队首永远是当前最大的间距，所以增加在队首的块的份数以此来减少其每份的间距。
+
+
+
+## [2402. Meeting Rooms III](https://leetcode.com/problems/meeting-rooms-iii/)
+
+1. Refactor array $meetings$ to duration based array and sorted by start time
+2. For each meeting, free all rooms that the meeting finish time is early than or equal to current meeting's start time, then
+   1. if there are available rooms here, then directly allocate the room with lowest number to it.
+   2. if there is no available room, allocate the room with lowest number for the earliest finished meeting to it.
+
+```java
+public class MeetingRoomsIII {
+    public int mostBooked(int n, int[][] meetings) {
+        int[][] duration_meeting = new int[meetings.length][meetings[0].length];
+        Arrays.sort(meetings, (o1, o2) -> o1[0] - o2[0]);
+        for (int i = 0; i < meetings.length; i++) {
+            int start = meetings[i][0];
+            int end = meetings[i][1];
+            duration_meeting[i][0] = start;
+            duration_meeting[i][1] = end - start;
+        }
+        int[] used_times = new int[n];
+        PriorityQueue<Integer> pq_room = new PriorityQueue<>();
+        PriorityQueue<int[]> pq_finishTime = new PriorityQueue<>(new Comparator<int[]>() {
+            @Override
+            public int compare(int[] o1, int[] o2) {
+                if (o1[1] == o2[1]) return o1[0] - o2[0];
+                else return o1[1] - o2[1];
+            }
+        });
+        for (int i = 0; i < n; i++) {
+            pq_room.offer(i);
+        }
+        for (int[] meeting : duration_meeting) {
+            int start = meeting[0];
+            int duration = meeting[1];
+            while (!pq_finishTime.isEmpty() && pq_finishTime.peek()[1] <= start) {
+                int[] poll = pq_finishTime.poll();
+                pq_room.offer(poll[0]);
+            }
+            if (pq_room.isEmpty()) {
+                int[] poll = pq_finishTime.poll();
+                int room_id = poll[0];
+                int finish_time = poll[1];
+                used_times[room_id]++;
+                pq_finishTime.offer(new int[]{room_id, finish_time + duration});
+            } else {
+                Integer room_id = pq_room.poll();
+                used_times[room_id]++;
+                pq_finishTime.offer(new int[]{room_id, start + duration});
+            }
+        }
+        int max = 0;
+        int res = 0;
+        for (int i = 0; i < n; i++) {
+            if (used_times[i] > max) {
+                res = i;
+                max = used_times[i];
+            }
+        }
+        return res;
+    }
+}
+```
+
+
 
 
 
@@ -14164,6 +15026,52 @@ public class Solution8 {
 
 
 
+## [6955. Maximum Number of Groups With Increasing Length](https://leetcode.com/problems/maximum-number-of-groups-with-increasing-length/)
+
+1. To sort the UsageLimits in descending order.
+
+2. Find a smallest target array -> Gives groups = 3, then the smallest target array is [3,2,1]
+
+3. For each element in UsageLimits, the excess (compare to smallest target array) can be the supplement of the piror part, but cannot be the supplement of the subsequent part (It will cause duplicating).
+
+4. Equation:
+
+   $gap=\begin{cases} \min(gap+usageLimits_{i}−target_{i}, 0) & \text{if } usageLimits_{i} >= target_{i} \\ gap+usageLimits_{i} − target_{i} & \text{if } usageLimits_{i} < target_{i} \end{cases}$
+
+![image-20230724112445667](https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/image-20230724112445667.png)
+
+```java
+public int maxIncreasingGroups(List<Integer> usageLimits) {
+    Collections.sort(usageLimits, (o1, o2) -> o2 - o1);
+    int n = usageLimits.size();
+    int res = binarySearch(1, n, usageLimits);
+    return res;
+}
+
+private boolean isNGroupsOK(List<Integer> usageLimits, int target) {
+    int gap = 0;
+    for n_number in usageLimits {
+        gap = Math.min(gap + x - target, 0);
+        if (target > 0) target--;
+    }
+    return gap >= 0;
+}
+
+private int binarySearch(int start, int end, List<Integer> usageLimits) {
+    while (start <= end) {
+        mid = start + (start - end) / 2;
+        if (isNGroupsOK) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+        
+    }
+}
+```
+
+
+
 
 
 
@@ -15148,14 +16056,6 @@ public class Solution1 {
 
 
 
-
-
-
-
-
-
-
-
 ## [268. Missing Number](https://leetcode.cn/problems/missing-number/)
 
 ```java
@@ -15179,14 +16079,6 @@ public class Solution2 {
     }
 }
 ```
-
-
-
-
-
-
-
-
 
 
 
@@ -15353,6 +16245,57 @@ public class Solution6 {
             }
         }
         return ret;
+    }
+}
+```
+
+
+
+## [2763. Sum of Imbalance Numbers of All Subarrays](https://leetcode.cn/problems/sum-of-imbalance-numbers-of-all-subarrays/)
+
+Define a array with length equal to $nums$.
+
+Two loops, the first loop iterate $nums$ represents the head of the subarray, the second loop iterate $nums$ represents the end of the subarray.
+
+For each element from iterating, set `array[num] = num`, check has its neighbours already been inserted.
+
+1. There is no neighbours, let `imbalance++`
+2. There is one neighbour, no need to update `imbalance`
+3. There are two neighbours, let `imbalance--`
+
+```java
+// 2763. Sum of Imbalance Numbers of All Subarrays
+public class SumOfImbalanceNumbersOfAllSubarrays {
+    public int sumImbalanceNumbers(int[] nums) {
+        // index sorting
+        int n = nums.length;
+        int size = n + 1;
+        int res = 0;
+        for (int i = 0; i < n - 1; i++) {
+            int[] sArr = new int[size];
+            sArr[nums[i]] = nums[i];
+            int imbalance = 0;
+            for (int j = i + 1; j < n; j++) {
+                int num = nums[j];
+                if (sArr[num] == 0) {
+                    if (num == 1) {
+                        imbalance += sArr[2] == 2 ? 0 : 1;
+                    } else if (num == n) {
+                        imbalance += sArr[n - 1] == n - 1 ? 0 : 1;
+                    } else {
+                        if ((sArr[num - 1] == num - 1) && (sArr[num + 1] == num + 1)) {
+                            imbalance--;
+                        }
+                        if ((sArr[num - 1] != num - 1) && (sArr[num + 1] != num + 1)) {
+                            imbalance++;
+                        }
+                    }
+                    sArr[num] = num;
+                }
+                res += imbalance;
+            }
+        }
+        return res;
     }
 }
 ```
@@ -16007,6 +16950,455 @@ public int countSubarrays(int[] nums, int k) {
 
 
 
+# Diff Array - 差分数组
+
+**If all elements in a subarray need to be added or subtracted by a number simultaneously.**
+
+```
+Example question:
+You are given a string s of lowercase English letters and a 2D integer array shifts where shifts[i] = [starti, endi, directioni]. For every i, shift the characters in s from the index starti to the index endi (inclusive) forward if directioni = 1, or shift the characters backward if directioni = 0.
+
+Shifting a character forward means replacing it with the next letter in the alphabet (wrapping around so that 'z' becomes 'a'). Similarly, shifting a character backward means replacing it with the previous letter in the alphabet (wrapping around so that 'a' becomes 'z').
+
+Return the final string after all such shifts to s are applied.
+
+If the operation happens on range [a, b]
+Let [a, array.length - 1]++ and [b + 1, array.length - 1]-- 
+```
+
+## [2381. Shifting Letters II](https://leetcode.com/problems/shifting-letters-ii/)
+
+```java
+// 2381. Shifting Letters II
+public class ShiftingLettersII {
+    public String shiftingLetters(String s, int[][] shifts) {
+        // diff array
+        int[] diff = new int[s.length()];
+        for (int i = 0; i < shifts.length; i++) {
+            int direct = shifts[i][2];
+            int start = shifts[i][0];
+            int end = shifts[i][1];
+            if (direct == 1) {
+                diff[start]++;
+                if (end + 1 < s.length()) diff[end + 1]--;
+            }
+            if (direct == 0) {
+                diff[start]--;
+                if (end + 1 < s.length()) diff[end + 1]++;
+            }
+        }
+        int temp = 0;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < diff.length; i++) {
+            temp = (temp + diff[i]) % 26;
+            char c = s.charAt(i);
+            char new_c = 'a';
+            if (c + temp > 'z') {
+                new_c = (char) ('a' + (c + temp - 'z' - 1));
+            } else if (c + temp < 'a') {
+                new_c = (char) ('z' - ('a' - c - temp - 1));
+            } else {
+                new_c = (char) (c + temp);
+            }
+            sb.append(new_c);
+        }
+        return sb.toString();
+    }
+}
+```
+
+
+
+## [2584. Split the Array to Make Coprime Products](https://leetcode.com/problems/split-the-array-to-make-coprime-products/)
+
+**For each prime, we can see them as a contingency array, it starts from the first element with such prime factor to the last element with such prime factor. The first place that be segmented is the answer.**
+
+<img src="https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/IMG_0780.jpg" alt="diff_array1" style="zoom:50%;" />
+
+```java
+// 2584. Split the Array to Make Coprime Products
+public class SplitTheArray2MakeCoprimeProducts {
+    // diff array
+    public int findValidSplit(int[] nums) {
+        Map<Integer, AbstractMap.SimpleEntry<Integer, Integer>> intervals = new HashMap<>();
+        List<Integer> primes = eratosthenes((int) 1e6);
+        for (int i = 0; i < nums.length; i++) {
+            int temp = nums[i];
+            for (Integer prime : primes) {
+                if (temp == 1) break;
+                if (prime > Math.sqrt(temp)) {
+                    if (!intervals.containsKey(temp)) {
+                        AbstractMap.SimpleEntry<Integer, Integer> pair = new AbstractMap.SimpleEntry<>(i, i);
+                        intervals.put(temp, pair);
+                    } else {
+                        AbstractMap.SimpleEntry<Integer, Integer> pair = intervals.get(temp);
+                        pair.setValue(i);
+                        intervals.put(temp, pair);
+                    }
+                    break;
+                }
+                if (temp % prime == 0) {
+                    if (!intervals.containsKey(prime)) {
+                        AbstractMap.SimpleEntry<Integer, Integer> pair = new AbstractMap.SimpleEntry<>(i, i);
+                        intervals.put(prime, pair);
+                    } else {
+                        AbstractMap.SimpleEntry<Integer, Integer> pair = intervals.get(prime);
+                        pair.setValue(i);
+                        intervals.put(prime, pair);
+                    }
+                }
+                while (temp % prime == 0) {
+                    temp /= prime;
+                }
+            }
+        }
+        int[] diff = new int[nums.length];
+        for (Map.Entry<Integer, AbstractMap.SimpleEntry<Integer, Integer>> entry : intervals.entrySet()) {
+            AbstractMap.SimpleEntry<Integer, Integer> pair = entry.getValue();
+            Integer start = pair.getKey();
+            Integer end = pair.getValue();
+            if (start == end) continue;
+            diff[start]++;
+            diff[end]--;
+        }
+        int sum = 0;
+        for (int i = 0; i < diff.length - 1; i++) {
+            sum += diff[i];
+            if (sum == 0) return i;
+        }
+        return -1;
+    }
+
+    public int findValidSplit2(int[] nums) {
+        Map<Integer, Integer> primes_map = new HashMap<>();
+        List<Integer> primes = eratosthenes((int) 1e6);
+        List<Map<Integer, Integer>> primesOfNums = new ArrayList<>();
+        for (int i = 0; i < nums.length; i++) {
+            int temp = nums[i];
+            Map<Integer, Integer> primesOfNum = new HashMap();
+            for (Integer prime : primes) {
+                if (temp == 1) break;
+                if (prime > Math.sqrt(temp)) {
+                    primes_map.put(temp, primes_map.getOrDefault(temp, 0) + 1);
+                    primesOfNum.put(temp, primesOfNum.getOrDefault(temp, 0) + 1);
+                    break;
+                }
+                while (temp % prime == 0) {
+                    primes_map.put(prime, primes_map.getOrDefault(prime, 0) + 1);
+                    primesOfNum.put(prime, primesOfNum.getOrDefault(prime, 0) + 1);
+                    temp /= prime;
+                }
+            }
+            primesOfNums.add(primesOfNum);
+        }
+        Set<Integer> validCheck = new HashSet<>();
+        for (int i = 0; i < nums.length - 1; i++) {
+            Map<Integer, Integer> primesOfNum = primesOfNums.get(i);
+            for (Map.Entry<Integer, Integer> entry : primesOfNum.entrySet()) {
+                Integer num = entry.getKey();
+                Integer nNum = entry.getValue();
+                if (!validCheck.contains(num)) validCheck.add(num);
+                if (primes_map.containsKey(num)) {
+                    int update = primes_map.getOrDefault(num, 0) - nNum;
+                    if (update <= 0) {
+                        primes_map.remove(num);
+                        validCheck.remove(num);
+                    }
+                    primes_map.put(num, update);
+                }
+            }
+            if (validCheck.isEmpty()) return i;
+        }
+        return -1;
+    }
+
+    private List<Integer> eratosthenes(int n) {
+        int[] q = new int[n + 1];
+        List<Integer> primes = new ArrayList<>();
+        for (int i = 2; i <= Math.sqrt(n); i++) {
+            if (q[i] == 1) continue;
+            int j = i * 2;
+            while (j <= n) {
+                q[j] = 1;
+                j += i;
+            }
+        }
+        for (int i = 2; i <= n; i++) {
+            if (q[i] == 0) {
+                primes.add(i);
+            }
+        }
+        return primes;
+    }
+}
+```
+
+
+
+## [2327. Number of People Aware of a Secret](https://leetcode.com/problems/number-of-people-aware-of-a-secret/)
+
+```java
+// 2327. Number of People Aware of a Secret
+public class NumberOfPeopleAwareOfASecret {
+    long MOD = (long) (1e9 + 7);
+    public int peopleAwareOfSecret(int n, int delay, int forget) {
+        long[] dp = new long[n + 1];
+        long[] diff = new long[n + 1];
+        diff[1] = 1;
+        diff[2] = -1;
+        for (int i = 1; i <= n; i++) {
+            // ensure that (dp[i - 1] + diff[i] + MOD) is positive
+            dp[i] = (dp[i - 1] + diff[i] + MOD) % MOD;
+            if (i + delay <= n) diff[i + delay] = (diff[i + delay] + dp[i]) % MOD;
+            if (i + forget <= n) diff[i + forget] = (diff[i + forget] - dp[i]) % MOD;
+        }
+        long res = 0;
+        for (int i = 1; i <= n; i++) {
+            if (i + forget > n) {
+                res = (res + dp[i]) % MOD;
+            }
+        }
+        return (int) res;
+    }
+}
+```
+
+
+
+## [253. Meeting Rooms II](https://leetcode.com/problems/meeting-rooms-ii/)
+
+```java
+// 253. Meeting Rooms II
+public class MeetingRoomsII {
+    public int minMeetingRooms(int[][] intervals) {
+        TreeMap<Integer, Integer> map = new TreeMap<>();
+        for (int i = 0; i < intervals.length; i++) {
+            int start = intervals[i][0];
+            int end = intervals[i][1];
+            map.put(start, map.getOrDefault(start, 0) + 1);
+            map.put(end, map.getOrDefault(end, 0) - 1);
+        }
+        int res = 0;
+        int temp = 0;
+        for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+            temp += entry.getValue();
+            res = Math.max(res, temp);
+        }
+        return res;
+    }
+}	
+```
+
+
+
+## [218. The Skyline Problem](https://leetcode.com/problems/the-skyline-problem/)
+
+```java
+// 218. The Skyline Problem
+public class TheSkylineProblem {
+    // use ordered map to always keep the highest height, the height may be removed when building with such height are all passed
+    // use another ordered map to track the timestamp and store buildings' left and right boundaries
+    public List<List<Integer>> getSkyline(int[][] buildings) {
+        int n = buildings.length;
+        TreeMap<Integer, List<Integer>> ordered_map = new TreeMap<>();
+        TreeMap<Integer, Integer> heights = new TreeMap<>((o1, o2) -> o2 - o1);
+        heights.put(0, 1);
+        for (int i = 0; i < n; i++) {
+            int left = buildings[i][0];
+            int right = buildings[i][1];
+            int height = buildings[i][2];
+            List<Integer> left_list = ordered_map.getOrDefault(left, new ArrayList<>());
+            left_list.add(height);
+            ordered_map.put(left, left_list);
+            List<Integer> right_list = ordered_map.getOrDefault(right, new ArrayList<>());
+            right_list.add(-height);
+            ordered_map.put(right, right_list);
+        }
+        List<List<Integer>> res = new ArrayList<>();
+        int max = 0;
+        for (Map.Entry<Integer, List<Integer>> entry : ordered_map.entrySet()) {
+            Integer index = entry.getKey();
+            List<Integer> height_list = entry.getValue();
+            for (Integer height : height_list) {
+                if (height > 0) {
+                    heights.put(height, heights.getOrDefault(height, 0) + 1);
+                }
+                if (height < 0) {
+                    int abs_height = Math.abs(height);
+                    Integer nNum = heights.get(abs_height);
+                    if (nNum - 1 == 0) heights.remove(abs_height);
+                    else heights.put(abs_height, nNum - 1);
+                }
+            }
+            if (max != heights.firstKey()) {
+                max = heights.firstKey();
+                List<Integer> point = new ArrayList<>();
+                point.add(index);
+                point.add(max);
+                res.add(point);
+            }
+        }
+        return res;
+    }
+}
+```
+
+
+
+## [2158. Amount of New Area Painted Each Day](https://leetcode.com/problems/amount-of-new-area-painted-each-day/)
+
+<img src="https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/IMG_0781.jpg" alt="IMG_0781" style="zoom:50%;" />
+
+```java
+// 2158. Amount of New Area Painted Each Day
+public class AmountOfNewAreaPaintedEachDay {
+    public int[] amountPainted(int[][] paint) {
+        // store the start and end information of every paint for each timestamp
+        TreeMap<Integer, List<AbstractMap.SimpleEntry<Integer, Boolean>>> timestamp_map = new TreeMap<>();
+        // store workLog in painting order, update according to timestamp
+        TreeMap<Integer, Integer> workLog = new TreeMap<>();
+        int n = paint.length;
+        int[] res = new int[n];
+        for (int i = 0; i < n; i++) {
+            int start = paint[i][0];
+            int end = paint[i][1];
+            List<AbstractMap.SimpleEntry<Integer, Boolean>> start_list = timestamp_map.getOrDefault(start, new ArrayList<>());
+            start_list.add(new AbstractMap.SimpleEntry<Integer, Boolean>(i, false));
+            timestamp_map.put(start, start_list);
+            List<AbstractMap.SimpleEntry<Integer, Boolean>> end_list = timestamp_map.getOrDefault(end, new ArrayList<>());
+            end_list.add(new AbstractMap.SimpleEntry<Integer, Boolean>(i, true));
+            timestamp_map.put(end, end_list);
+        }
+        int last_timestamp = 0;
+        for (Map.Entry<Integer, List<AbstractMap.SimpleEntry<Integer, Boolean>>> entry : timestamp_map.entrySet()) {
+            Integer timestamp = entry.getKey();
+            List<AbstractMap.SimpleEntry<Integer, Boolean>> paint_list = entry.getValue();
+            if (!workLog.isEmpty()) {
+                Integer new_length = workLog.firstEntry().getValue() + timestamp - last_timestamp;
+                workLog.put(workLog.firstKey(), new_length);
+            }
+            for (AbstractMap.SimpleEntry<Integer, Boolean> pair : paint_list) {
+                Integer i_paint = pair.getKey();
+                Boolean isEnd = pair.getValue();
+                if (isEnd) {
+                    Integer length = workLog.get(i_paint);
+                    res[i_paint] = length;
+                    workLog.remove(i_paint);
+                } else {
+                    workLog.put(i_paint, 0);
+                }
+            }
+            last_timestamp = timestamp;
+        }
+        return res;
+    }
+}
+```
+
+
+
+## [2772. Apply Operations to Make All Array Elements Equal to Zero](https://leetcode.cn/problems/apply-operations-to-make-all-array-elements-equal-to-zero/)
+
+```java
+// 2772. Apply Operations to Make All Array Elements Equal to Zero
+public class ApplyOperations2MakeAllArrayElementsEqual2Zero {
+    public boolean checkArray(int[] nums, int k) {
+        int n = nums.length;
+        int[] diff = new int[n + 1];
+        int prefix = 0;
+        for (int i = 0; i < n; i++) {
+            prefix += diff[i];
+            int differ = nums[i] + prefix;
+            if (differ == 0) continue;
+            if (differ < 0) return false;
+            if (differ > 0) {
+                if (i + k <= n) {
+                    prefix -= differ;
+                    diff[i + k] += differ;
+                }
+                else return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+
+
+# Graph
+
+## Adjacency Matrix
+
+**Dense Graph**
+
+这是一种使用二维矩阵来进行存图的方式。
+
+适用于边数较多的**稠密图**使用，当边数量接近点的数量的平方，即 $m\approx n^2$ 时，可定义为**稠密图**。
+
+```java
+// w[a][b] = c  from a to b, the weight is c
+int[][] w = new int[N][N];
+
+// add new edge
+void add(int a, int b, int c) {
+    w[a][b] = c;
+}
+```
+
+
+
+## Adjacency Table
+
+**Sparse Graph**
+
+这也是一种在图论中十分常见的存图方式，与数组存储单链表的实现一致（头插法）。
+
+这种存图方式又叫链式前向星存图。
+
+适用于边数较少的**稀疏图**使用，当边数量接近点的数量，即 $m\approx n$ 时，可定义为**稀疏图**。
+
+```java
+// The neighbours are stored as a linked list
+// heads[i]: this is the head of the list of the vertex i's neighbours
+// dests[i]: The destination for edge i
+// nexts[i]: The next element in the neighbour list
+// weights[i]: The weight of edge i
+int[] heads = new int[N], dests = new int[M], nexts = new int[M], weights = new int[M];
+int idx;
+
+void add(int a, int b, int c) {
+    dests[idx] = b;
+    nexts[idx] = heads[a];
+    heads[a] = idx;
+    weights[idx] = c;
+    idx++;
+}
+
+// Iterate all neighbours
+for (int i = heads[a]; i != -1; i = nexts[i]) {
+    int b = dests[i], c = weights[i]; 
+}
+
+// For initalize a forward adjacency table
+private void initForwardAdjacencyTable(int[][] edges) {
+    heads = new int[_n];
+    Arrays.fill(heads, -1);
+    dests = new int[_m];
+    nexts = new int[_m];
+    weights = new int[_m];
+    idx = 0;
+    for (int[] edge : edges) {
+        int source = edge[0];
+        int dest = edge[1];
+        int weight = edge[2];
+        add(source, dest, weight);
+    }
+}
+
+
+```
+
 
 
 
@@ -16046,7 +17438,7 @@ s1 + s2 == (s1 ^ s2)
 int state = (1 << k) - 1;
 while (state < (1 << n)) {
     /* do someting here */
-    int c = state & - state;
+    int c = state & -state;
     int r = state + c;
     state = (((r ^ state) >> 2) / c) | r;
 }
@@ -16105,7 +17497,7 @@ public int makeTheIntegerZero(int num1, int num2) {
 # BinarySearch Template
 
 ```java
-//若数组中有多个x，则二分查找寻找i的左边界闭区间，开区间请改成sorted[mid] > target + l即可(但此时的开区间是往大的找的，即返回值是x+1)
+//若数组中有多个x，则二分查找寻找i的左边界闭区间，开区间请改成sorted[mid] > target即可(但此时的开区间是往大的找的，即返回值是x+1)
 private int binarySearchLeft(long[] sorted, long target, int start, int end) {
     int left = start, right = end;
     while (left <= right) {
@@ -16119,7 +17511,7 @@ private int binarySearchLeft(long[] sorted, long target, int start, int end) {
     return left;
 }
 
-//二分查找寻找x右边界，开区间请改成sorted[mid] < target + u即可(同理返回值是x+1)
+//二分查找寻找x右边界，开区间请改成sorted[mid] < target即可(同理返回值是x+1)
 private int binarySearchRight(long[] sorted, long target, int start, int end) {
     int left = start, right = end;
     while (left <= right) {
