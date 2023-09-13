@@ -922,6 +922,55 @@ public class Solution9 {
 
 
 
+## [2458. Height of Binary Tree After Subtree Removal Queries](https://leetcode.com/problems/height-of-binary-tree-after-subtree-removal-queries/)
+
+Two times of dfs
+
+1. Get all the heights of each subtree
+2. Start from root node, the maximum height of deleting the current node $n$ is $\max(maxHeight_{temp},depth_{current}+maxHeight_{brotherTree})$
+   1. We start from deleting root node, the max height now is 0.
+   2. Move to delete its left child, the current depth is 0 (root's height is 0), and we have the maximum height of right subtree
+   3. So we can get $height_{leftChild}=\max(maxHeight_{temp},depth_{current}+maxHeight_{rightSubTree})$, $height_{rightChild}=\max(maxHeight_{temp},depth_{current}+maxHeight_{leftSubTree})$
+
+```java
+public class HeightOfBinaryTreeAfterSubtreeRemovalQueries2 {
+    Map<Integer, Integer> heights = new HashMap<>();
+    int[] heightsAfterDeleting;
+
+    public int[] treeQueries(TreeNode root, int[] queries) {
+        getHeights(root);
+        heightsAfterDeleting = new int[heights.size() + 1];
+        dfs(root, 0, 0);
+        int[] res = new int[queries.length];
+        for (int i = 0; i < queries.length; i++) {
+            res[i] = heightsAfterDeleting[queries[i]];
+        }
+        return res;
+    }
+
+    private void dfs(TreeNode node, int depth, int rest_height) {
+        if (node == null) return;
+        heightsAfterDeleting[node.val] = rest_height;
+        int left_height = 0;
+        if (node.left != null) left_height = heights.getOrDefault(node.left.val, 0);
+        int right_height = 0;
+        if (node.right != null) right_height = heights.getOrDefault(node.right.val, 0);
+        dfs(node.left, depth + 1, Math.max(rest_height, depth + right_height));
+        dfs(node.right, depth + 1, Math.max(rest_height, depth + left_height));
+    }
+
+    private int getHeights(TreeNode node) {
+        if (node == null) return 0;
+        int h = Math.max(getHeights(node.left), getHeights(node.right)) + 1;
+        heights.put(node.val, h);
+        return h;
+    }
+}
+
+```
+
+
+
 # Segment Tree | Binary Indexed Tree
 
 ## Segment Tree Template
@@ -931,12 +980,12 @@ public class SegmentTreeNode {
     public SegmentTreeNode left;
     public SegmentTreeNode right;
     public int start, end;
-    public int info;
+    public int val; // there can add space to store more needed data
 
     public SegmentTreeNode(int start, int end) {
         this.start = start;
         this.end = end;
-        this.info = 0;
+        this.val = 0;
         this.left = null;
         this.right = null;
     }
@@ -947,24 +996,24 @@ public class SegmentTreeNode {
             return;
         }
         int mid = (start + end) / 2;
-        if (node.left == null) {
+        if (node.left == null) { // create space
             node.left = new SegmentTreeNode(start, mid);
             node.right = new SegmentTreeNode(mid + 1, end);
         }
-        init(node.left, start, mid);
+        init(node.left, start, mid); // initalize its left and right child
         init(node.right, mid + 1, end);
-        node.info = node.left.info + node.right.info;
+        node.val = node.left.val + node.right.val;
     }
 
     public void updateSingle(SegmentTreeNode node, int idx, int val) {
         if (idx < node.start || idx > node.end) return;
         if (node.start == node.end) {
-            node.info = val;
+            node.val = val;
             return;
         }
         updateSingle(node.left, idx, val);
         updateSingle(node.right, idx, val);
-        node.info = node.left.info + node.right.info;
+        node.val = node.left.val + node.right.val ;
     }
 
     public int queryRange(SegmentTreeNode node, int start, int end) {
@@ -972,7 +1021,7 @@ public class SegmentTreeNode {
             // maybe tricky, need to consider the content
             return 0;
         }
-        if (start <= node.start && end >= node.end) return node.info;
+        if (start <= node.start && end >= node.end) return node.val;
         return queryRange(node.left, start, end) + queryRange(node.right, start, end);
     }
 }
@@ -1023,6 +1072,227 @@ https://blog.csdn.net/qq_40941722/article/details/104406126
 ```
 
 
+
+## [1526. Minimum Number of Increments on Subarrays to Form a Target Array](https://leetcode.com/problems/minimum-number-of-increments-on-subarrays-to-form-a-target-array/)
+
+```java
+// 1526. Minimum Number of Increments on Subarrays to Form a Target Array
+public class MinimumNumberOfIncrementsOnSubarrays2FormATargetArray {
+    int[] target;
+    int INF = Integer.MAX_VALUE / 2;
+    class SegmentTreeNode {
+        public SegmentTreeNode left;
+        public SegmentTreeNode right;
+        public int start, end;
+        public int val, pos;
+
+        public SegmentTreeNode(int start, int end) {
+            this.start = start;
+            this.end = end;
+            this.val = 0;
+            this.pos = 0;
+            this.left = null;
+            this.right = null;
+        }
+
+        public void init(SegmentTreeNode node, int start, int end) {
+            if (start == end) {
+                node.val = target[start];
+                node.pos = start;
+                return;
+            }
+            int mid = (start + end) / 2;
+            if (node.left == null) {
+                node.left = new SegmentTreeNode(start, mid);
+                node.right = new SegmentTreeNode(mid + 1, end);
+            }
+            init(node.left, start, mid);
+            init(node.right, mid + 1, end);
+            if (node.left.val >= node.right.val) {
+                node.val = node.right.val;
+                node.pos = node.right.pos;
+            } else {
+                node.val = node.left.val;
+                node.pos = node.left.pos;
+            }
+        }
+
+        public Pair<Integer, Integer> queryRangeMin(SegmentTreeNode node, int start, int end) {
+            if (end < node.start || start > node.end) {
+                return new Pair<>(INF, 0);
+            }
+            if (start <= node.start && end >= node.end) return new Pair<>(node.val, node.pos);
+            Pair<Integer, Integer> left = queryRangeMin(node.left, start, end);
+            Pair<Integer, Integer> right = queryRangeMin(node.right, start, end);
+            if (left.getKey() < right.getKey()) {
+                return left;
+            } else return right;
+        }
+    }
+    public int minNumberOperations(int[] target) {
+        this.target = target;
+        int n = target.length;
+        SegmentTreeNode root = new SegmentTreeNode(0, n - 1);
+        root.init(root, 0, n - 1);
+        return dfs(root, 0, n - 1, 0);
+    }
+
+    private int dfs(SegmentTreeNode root, int start, int end, int base) {
+        if (start > end) return 0;
+        if (start == end) return this.target[start] - base;
+        Pair<Integer, Integer> pair = root.queryRangeMin(root, start, end);
+        Integer min_val = pair.getKey();
+        Integer pos = pair.getValue();
+        int sum = min_val - base;
+        sum += dfs(root, start, pos - 1, min_val);
+        sum += dfs(root, pos + 1, end, min_val);
+        return sum;
+    }
+}
+```
+
+
+
+## [715. Range Module](https://leetcode.com/problems/range-module/)
+
+An **issue**:
+
+For deleting the child node.
+
+1. `node.left = null`. It works.
+2. `void remove(Treenode node){ node = null; }     remove(node.left)` It will not work.
+
+```java
+public class RangeModule {
+    public class SegTree {
+        SegTree left, right;
+        int start, end;
+        boolean isActivate;
+
+        public SegTree(int a, int b, boolean s) {
+            this.start = a;
+            this.end = b;
+            this.isActivate = s;
+        }
+
+        void setStatus(int a, int b, boolean s) {
+            if (a <= start && b >= end) {
+                left = null;
+                right = null;
+                isActivate = s;
+                return;
+            }
+            if (a >= this.end || b <= this.start) { // [a,b) -> left >= b || right <= a
+                return;
+            }
+            int mid = start + (end - start) / 2;
+            if (left == null) {
+                left = new SegTree(start, mid, isActivate);
+                right = new SegTree(mid, end, isActivate);
+            }
+            left.setStatus(a, b, s);
+            right.setStatus(a, b, s);
+            isActivate = left.isActivate && right.isActivate;
+        }
+
+        boolean getStatus(int a, int b) {
+            if (a <= start && b >= end) {
+                return isActivate;
+            }
+            if (a >= end || b <= start) {
+                return true;
+            }
+            if (left == null) return isActivate;
+            boolean isLeftActivate = left.getStatus(a, b);
+            boolean isRightActivate = right.getStatus(a, b);
+            return isLeftActivate && isRightActivate;
+        }
+    }
+
+    SegTree root = new SegTree(0, (int) 1e9, false);
+    RangeModule() {
+    }
+
+    public void addRange(int left, int right) {
+        root.setStatus(left, right, true);
+    }
+
+    public boolean queryRange(int left, int right) {
+        return root.getStatus(left, right);
+    }
+
+    public void removeRange(int left, int right) {
+        root.setStatus(left, right, false);
+    }
+}
+```
+
+
+
+## [2034. Stock Price Fluctuation](https://leetcode.com/problems/stock-price-fluctuation/)
+
+```java
+public class StockPrice {
+    class SegmentTreeNode {
+        SegmentTreeNode left;
+        SegmentTreeNode right;
+        int max, min;
+        int start, end;
+        public SegmentTreeNode(int start, int end) {
+            this.start = start;
+            this.end = end;
+            this.max = Integer.MIN_VALUE / 2;
+            this.min = Integer.MAX_VALUE / 2;
+        }
+
+        public void setStatus(int idx, int val) {
+            if (idx > end || idx < start) return;
+            if (start == end) {
+                max = val;
+                min = val;
+                return;
+            }
+            int mid = start + (end - start) / 2;
+            if (left == null) {
+                left = new SegmentTreeNode(start, mid);
+                right = new SegmentTreeNode(mid + 1, end);
+            }
+            left.setStatus(idx, val);
+            right.setStatus(idx, val);
+            max = Math.max(left.max, right.max);
+            min = Math.min(left.min, right.min);
+        }
+    }
+
+    int cur_stamp, cur_value;
+    SegmentTreeNode root;
+    public StockPrice() {
+        this.root = new SegmentTreeNode(1, (int) 1e9);
+        this.cur_stamp = 0;
+        this.cur_value = 0;
+    }
+
+    public void update(int timestamp, int price) {
+        root.setStatus(timestamp, price);
+        if (cur_stamp <= timestamp) {
+            cur_stamp = timestamp;
+            cur_value = price;
+        }
+    }
+
+    public int current() {
+        return cur_value;
+    }
+
+    public int maximum() {
+        return root.max;
+    }
+
+    public int minimum() {
+        return root.min;
+    }
+}
+```
 
 
 
@@ -3257,6 +3527,20 @@ public class Solution18 {
 - 被监控的节点会被标记为2
 
 
+
+## [2811. Check if it is Possible to Split Array](https://leetcode.com/problems/check-if-it-is-possible-to-split-array/)
+
+During the spliting process, the array will finally be splitted to a array with length 2. Then if the sum of this length 2 subarray is greater than or equal to $m$, it is also ok to split before it.
+
+```java
+public boolean canSplitArray(List<Integer> nums, int m) {
+    if (nums.size() <= 2) return true;
+    for (int i = 0; i < nums.size() - 1; i++) {
+        if (nums.get(i) + nums.get(i + 1) >= m) return true;
+    }
+    return false;
+}
+```
 
 
 
@@ -7407,9 +7691,65 @@ public class MaximumANDSumOfArray {
 
 
 
+## [2850. Minimum Moves to Spread Stones Over Grid](https://leetcode.com/problems/minimum-moves-to-spread-stones-over-grid/)
+
+```java
+public class MinimumMovesToSpreadStonesOverGrid {
+    int n;
+    int n_row, n_col;
+    int INF = Integer.MAX_VALUE / 2;
+    public int minimumMoves(int[][] grid) {
+        n_row = grid.length;
+        n_col = grid[0].length;
+        n = n_row * n_col;
+        int n_state = 1 << n;
+        int[] dp = new int[n_state];
+        Arrays.fill(dp, INF);
+        List<Integer> excess_stones = new ArrayList<>();
+        List<Integer> empty_space = new ArrayList<>();
+        for (int i = 0; i < n_row; i++) {
+            for (int j = 0; j < n_col; j++) {
+                int n_stones = grid[i][j];
+                if (n_stones == 0) {
+                    empty_space.add(i * n_col + j);
+                    continue;
+                }
+                while (n_stones > 1) {
+                    excess_stones.add(i * n_col + j);
+                    n_stones--;
+                }
+            }
+        }
+        int init_state = (1 << n) - 1;
+        for (int id : empty_space) {
+            init_state -= 1 << id;
+        }
+        dp[init_state] = 0;
+        for (int i = 0; i < excess_stones.size(); i++) {
+            int[] dp_new = Arrays.copyOf(dp, dp.length);
+            int excess_id = excess_stones.get(i);
+            int excess_stone_row = excess_id / n_col;
+            int excess_stone_col = excess_id % n_col;
+            for (int state = init_state + 1; state < n_state; state++) {
+                if ((state & init_state) != init_state) continue;
+                for (Integer empty_id : empty_space) {
+                    int subset = 1 << empty_id;
+                    if ((subset & state) == subset) {
+                        int empty_space_row = empty_id / n_col;
+                        int empty_space_col = empty_id % n_col;
+                        int distance = Math.abs(excess_stone_row - empty_space_row) + Math.abs(excess_stone_col - empty_space_col);
+                        dp_new[state] = Math.min(dp_new[state], dp[state - subset] + distance);
+                    }
+                }
+            }
+            dp = dp_new;
+        }
+        return dp[n_state - 1];
+    }
+}
+```
 
 
-## [2397. Maximum Rows Covered by Columns](https://leetcode.com/problems/maximum-rows-covered-by-columns/)
 
 
 
@@ -8079,6 +8419,79 @@ public long continuousSubarrays(int[] nums) {
     return res;
 }
 ```
+
+
+
+
+
+## [975. Odd Even Jump](https://leetcode.com/problems/odd-even-jump/)
+
+To determine the above two things, we can make use of monotonic stack
+
+1. we first sort the indices by values in ascending order. That means the current element/index in iteration will always have a higher value than the previous one
+2. We maintain a stack which is maintaining the indices, everytime we encounter an index which is ahead of top of stack index, that means, a jump can be made from top of stack index to the current index. If we current index is lesser than top of stack index, we simply push it to stack.
+
+```java
+public class OddEvenJump {
+    int n;
+    public int oddEvenJumps(int[] arr) {
+        n = arr.length;
+        List<Pair<Integer, Integer>> arr_sorted_ascend = new ArrayList<>();
+        List<Pair<Integer, Integer>> arr_sorted_descend = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            arr_sorted_ascend.add(new Pair<>(arr[i], i));
+            arr_sorted_descend.add(new Pair<>(arr[i], i));
+        }
+        Collections.sort(arr_sorted_ascend, (o1, o2) -> {
+            if (o1.getKey() == o2.getKey()) return o1.getValue() - o2.getValue();
+            return o1.getKey() - o2.getKey();
+        });
+        Collections.sort(arr_sorted_descend, (o1, o2) -> {
+            if (o1.getKey() == o2.getKey()) return o1.getValue() - o2.getValue();
+            return o2.getKey() - o1.getKey();
+        });
+        Stack<Integer> ms_increase = new Stack<>();
+        Stack<Integer> ms_decrease = new Stack<>();
+        int[] next_odd_jump = new int[n];
+        int[] next_even_jump = new int[n];
+        Arrays.fill(next_odd_jump, -1);
+        Arrays.fill(next_even_jump, -1);
+        for (int i = 0; i < n; i++) {
+            Pair<Integer, Integer> pair_ascend = arr_sorted_ascend.get(i);
+            Integer index_ascend = pair_ascend.getValue();
+            Pair<Integer, Integer> pair_descend = arr_sorted_descend.get(i);
+            Integer index_descend = pair_descend.getValue();
+            while (!ms_increase.isEmpty() && index_ascend > ms_increase.peek()) {
+                next_odd_jump[ms_increase.pop()] = index_ascend;
+            }
+            ms_increase.push(index_ascend);
+            while (!ms_decrease.isEmpty() && index_descend > ms_decrease.peek()) {
+                next_even_jump[ms_decrease.pop()] = index_descend;
+            }
+            ms_decrease.push(index_descend);
+        }
+        boolean[] dp_odd_jump = new boolean[n];
+        Arrays.fill(dp_odd_jump, false);
+        boolean[] dp_even_jump = new boolean[n];
+        Arrays.fill(dp_even_jump, false);
+        dp_odd_jump[n - 1] = true;
+        dp_even_jump[n - 1] = true;
+        for (int i = n - 2; i >= 0; i--) {
+            int next_odd_jump_index = next_odd_jump[i];
+            int next_even_jump_index = next_even_jump[i];
+            if (next_odd_jump_index != -1) dp_odd_jump[i] = dp_even_jump[next_odd_jump_index];
+            if (next_even_jump_index != -1) dp_even_jump[i] = dp_odd_jump[next_even_jump_index];
+        }
+        int res = 0;
+        for (boolean b : dp_odd_jump) {
+            if (b) res++;
+        }
+        return res;
+    }
+}
+```
+
+
 
 
 
@@ -9671,6 +10084,52 @@ public class TextJustification {
 
 
 
+## [2416. Sum of Prefix Scores of Strings](https://leetcode.com/problems/sum-of-prefix-scores-of-strings/)
+
+```java
+class DictionaryTreeNode {
+        DictionaryTreeNode[] child = new DictionaryTreeNode[26];
+        int score;
+        DictionaryTreeNode(int score) {
+            this.score = 1;
+        }
+    }
+    int n;
+    public int[] sumPrefixScores(String[] words) {
+        n = words.length;
+        DictionaryTreeNode root = new DictionaryTreeNode(0);
+        for (int i = 0; i < n; i++) {
+            String word = words[i];
+            int word_length = word.length();
+            DictionaryTreeNode cur = root;
+            for (int j = 0 ; j < word_length; j++) {
+                char c = word.charAt(j);
+                if (cur.child[c - 'a'] == null) cur.child[c - 'a'] = new DictionaryTreeNode(1);
+                else  cur.child[c - 'a'].score++;
+                cur = cur.child[c - 'a'];
+            }
+        }
+        int[] res = new int[n];
+        for (int i = 0; i < n; i++) {
+            String word = words[i];
+            int word_length = word.length();
+            DictionaryTreeNode cur = root;
+            int count = 0;
+            for (int j = 0 ; j < word_length; j++) {
+                char c = word.charAt(j);
+                cur = cur.child[c - 'a'];
+                count += cur.score;
+            }
+            res[i] = count;
+        }
+        return res;
+    }
+```
+
+
+
+
+
 # Linked List
 
 ## [0025. K 个一组翻转链表](https://leetcode-cn.com/problems/reverse-nodes-in-k-group/)
@@ -10883,6 +11342,33 @@ public class MinimumIncompatibility {
 
 
 
+## [365. Water and Jug Problem](https://leetcode.com/problems/water-and-jug-problem/)
+
+```java
+public class WaterAndJugProblem {
+    public boolean canMeasureWater(int jug1Capacity, int jug2Capacity, int targetCapacity) {
+        if (jug1Capacity > jug2Capacity) {
+            int temp = jug1Capacity;
+            jug1Capacity = jug2Capacity;
+            jug2Capacity = temp;
+        }
+        Set<Integer> set = new HashSet<>();
+        set.add(jug1Capacity);
+        set.add(jug2Capacity);
+        int count = 0;
+        while (true) {
+            count += jug1Capacity;
+            if (count >= jug2Capacity) {
+                count -= jug2Capacity;
+                if (set.contains(count)) break;
+                set.add(count);
+            }
+        }
+        return set.contains(targetCapacity) || set.contains(targetCapacity - jug1Capacity) || set.contains(targetCapacity - jug2Capacity);
+    }
+}
+```
+
 
 
 # BFS
@@ -11010,6 +11496,103 @@ public class DetonateTheMaximumBombs {
 ```
 
 
+
+
+
+## [818. Race Car](https://leetcode.com/problems/race-car/)
+
+```java
+// 818. Race Car
+public class RaceCar {
+    Map<Integer, Set<Integer>> visited = new HashMap();
+    int res;
+    public int racecar(int target) {
+        bfs(target);
+        return res;
+    }
+
+    private void bfs(int target) {
+        Queue<int[]> pq = new LinkedList<>();
+        pq.add(new int[]{0, 0, 1});
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int timestamp = poll[0];
+            int pos = poll[1];
+            int speed = poll[2];
+            Set<Integer> set = visited.getOrDefault(pos, new HashSet<>());
+            if (set.contains(speed)) continue;
+            set.add(speed);
+            visited.put(pos, set);
+            if (pos == target) {
+                res = timestamp;
+                return;
+            }
+            pq.add(new int[]{timestamp + 1, pos + speed, speed * 2});
+            if ((pos + speed > target && speed > 0) || (pos + speed < target && speed < 0)) { // really important for AC, a good way for pruning
+                pq.add(new int[]{timestamp + 1, pos, speed > 0 ? -1 : 1});
+            }
+        }
+    }
+}
+
+```
+
+
+
+## [1293. Shortest Path in a Grid with Obstacles Elimination](https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/)
+
+```java
+// 1293. Shortest Path in a Grid with Obstacles Elimination
+public class ShortestPathInAGridWithObstaclesElimination {
+    int[] visited;
+    int[][] direction = new int[][]{{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    int n, m;
+    int INF = Integer.MAX_VALUE / 2;
+    public int shortestPath(int[][] grid, int k) {
+        m = grid.length;
+        n = grid[0].length;
+        if (m == 1 && n == 1) return 0;
+        return bfs(grid, k);
+    }
+
+    private int bfs(int[][] grid, int k) {
+        visited = new int[m * n];
+        Arrays.fill(visited, -1);
+        Queue<int[]> queue = new LinkedList<>();
+        queue.add(new int[]{0, k});
+        int step = 0;
+        while (!queue.isEmpty()) {
+            step++;
+            int size = queue.size();
+            for (int i = 0; i < size; i++) {
+                int[] poll = queue.poll();
+                int id = poll[0];
+                int row = id / n;
+                int col = id % n;
+                int _k = poll[1];
+                for (int[] dir : direction) {
+                    int row_move = dir[0];
+                    int col_move = dir[1];
+                    int neighbour_row = row + row_move;
+                    int neighbour_col = col + col_move;
+                    if (neighbour_row < 0 || neighbour_row >= m || neighbour_col < 0 || neighbour_col >= n || (grid[neighbour_row][neighbour_col] == 1 && _k == 0)) {
+                        continue;
+                    }
+                    int neighbour_id = (neighbour_row) * n + neighbour_col;
+                    if (neighbour_id == m * n - 1) return step;
+                    int last_k = grid[neighbour_row][neighbour_col] == 1 ? _k - 1 : _k;
+                    // bfs for each iteration, the path destination all have the same distance, so we only focus on the times of eliminating obstacles
+                    // If current distance is greater than the previous one, but its available times of eliminating obstacles is greater than the previous one, it could also be added to queue
+                    if (visited[neighbour_id] != -1 && visited[neighbour_id] >= last_k) continue;
+                    visited[neighbour_id] = last_k;
+                    queue.add(new int[]{neighbour_id, last_k});
+                }
+            }
+        }
+        return -1;
+    }
+}
+```
 
 
 
@@ -11581,6 +12164,127 @@ public class NumberOfWays2ArriveAtDestination {
 ```
 
 
+
+## [2812. Find the Safest Path in a Grid](https://leetcode.com/problems/find-the-safest-path-in-a-grid/)
+
+```java
+public class FindTheSafestPathInAGrid {
+    int[][] direction_dict = new int[][]{{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+    int INF = Integer.MAX_VALUE / 2;
+
+    public int maximumSafenessFactor(List<List<Integer>> grid) {
+        int n = grid.size();
+        if (grid.get(0).get(0) == 1 || grid.get(n - 1).get(n - 1) == 1) return 0;
+        Queue<int[]> pathQueue = new LinkedList<>();
+        int[][] weights = new int[n][n];
+        boolean[][] visited = new boolean[n][n];
+        for (int[] a : weights) {
+            Arrays.fill(a, INF);
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid.get(i).get(j) == 1) {
+                    pathQueue.add(new int[]{i, j});
+                    weights[i][j] = 0;
+                }
+            }
+        }
+        dfs(n, pathQueue, weights); // bfs to update the minimum safeness factor for each vertex
+        Integer res = dijkstra(n, weights, visited); 
+        if (res != null) return res;
+        return 0;
+    }
+
+    private Integer dijkstra(int n, int[][] weights, boolean[][] visited) {
+        PriorityQueue<int[]> pq = new PriorityQueue<>((o1, o2) -> o2[0] - o1[0]); // Want to pass the larger safeness factor path as possible
+        int res = this.INF;
+        pq.offer(new int[]{weights[0][0], 0, 0});
+        for (boolean[] v : visited) {
+            Arrays.fill(v, false);
+        }
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int weight = poll[0];
+            int row = poll[1];
+            int col = poll[2];
+            if (visited[row][col]) continue;
+            visited[row][col] = true;
+            res = Math.min(res, weight);
+            if (row == n - 1 && col == n - 1) return res;
+            for (int[] direction : direction_dict) {
+                int row_move = direction[0];
+                int col_move = direction[1];
+                int new_row = row + row_move;
+                int new_col = col + col_move;
+                if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < n) {
+                    pq.add(new int[]{weights[new_row][new_col], new_row, new_col});
+                }
+            }
+        }
+        return null;
+    }
+
+    private void dfs(int n, Queue<int[]> pathQueue, int[][] weights) {
+        while (!pathQueue.isEmpty()) {
+            int[] poll = pathQueue.poll();
+            int row = poll[0];
+            int col = poll[1];
+            for (int[] direction : direction_dict) {
+                int row_move = direction[0];
+                int col_move = direction[1];
+                int new_row = row + row_move;
+                int new_col = col + col_move;
+                if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < n && weights[new_row][new_col] == this.INF) {
+                    weights[new_row][new_col] = weights[row][col] + 1;
+                    pathQueue.add(new int[]{new_row, new_col});
+                }
+            }
+        }
+    }
+}
+```
+
+
+
+## [1102. Path With Maximum Minimum Value](https://leetcode.com/problems/path-with-maximum-minimum-value/description/)
+
+```java
+public class PathWithMaximumMinimumValue {
+    int[][] directions = new int[][]{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+    int m, n;
+
+    public int maximumMinimumPath(int[][] grid) {
+        m = grid.length;
+        n = grid[0].length;
+        return bfs(grid);
+    }
+
+    private int bfs(int[][] grid) {
+        PriorityQueue<int[]> pq = new PriorityQueue<>((o1, o2) -> o2[2] - o1[2]);
+        boolean[][] visited = new boolean[m][n];
+        pq.add(new int[]{0, 0, grid[0][0], grid[0][0]});
+        while (!pq.isEmpty()) {
+            int[] poll = pq.poll();
+            int cur_row = poll[0];
+            int cur_col = poll[1];
+            int min_in_path = poll[3];
+            for (int[] direction : directions) {
+                int row_move = direction[0];
+                int col_move = direction[1];
+                int neighbour_row = cur_row + row_move;
+                int neighbour_col = cur_col + col_move;
+                if (neighbour_row < 0 || neighbour_row >= m || neighbour_col < 0 || neighbour_col >= n) continue;
+                if (visited[neighbour_row][neighbour_col]) continue;
+                if (neighbour_row == m - 1 && neighbour_col == n - 1) return Math.min(grid[neighbour_row][neighbour_col], min_in_path);
+                visited[neighbour_row][neighbour_col] = true;
+                pq.add(new int[]{neighbour_row, neighbour_col, grid[neighbour_row][neighbour_col], Math.min(grid[neighbour_row][neighbour_col], min_in_path)});
+            }
+        }
+        return -1;
+    }
+}
+
+```
 
 
 
@@ -12437,6 +13141,220 @@ public class MeetingRoomsIII {
 
 
 
+## [2034. Stock Price Fluctuation](https://leetcode.com/problems/stock-price-fluctuation/)
+
+```java
+public class StockPrice {
+    PriorityQueue<Pair<Integer, Integer>> pq_increase;
+    PriorityQueue<Pair<Integer, Integer>> pq_decrease;
+    Map<Integer, Integer> records;
+    int cur_timestamp, cur_price;
+    public StockPrice() {
+        this.pq_increase = new PriorityQueue<>((o1, o2) -> o1.getValue() - o2.getValue());
+        this.pq_decrease = new PriorityQueue<>((o1, o2) -> o2.getValue() - o1.getValue());
+        this.records = new HashMap<>();
+        this.cur_timestamp = 0;
+        this.cur_price = 0;
+    }
+
+    public void update(int timestamp, int price) {
+        pq_increase.add(new Pair<>(timestamp, price));
+        pq_decrease.add(new Pair<>(timestamp, price));
+        records.put(timestamp, price);
+        if (cur_timestamp <= timestamp) {
+            cur_timestamp = timestamp;
+            cur_price = price;
+        }
+    }
+
+    public int current() {
+        return cur_price;
+    }
+
+    public int maximum() {
+        return updateRecordsInPriorityQueue(pq_decrease);
+    }
+
+    public int minimum() {
+        return updateRecordsInPriorityQueue(pq_increase);
+    }
+    
+    private int updateRecordsInPriorityQueue(PriorityQueue<Pair<Integer, Integer>> pqDecrease) {
+        while (records.get(pqDecrease.peek().getKey()) != pqDecrease.peek().getValue()) {
+            Pair<Integer, Integer> poll = pqDecrease.poll();
+            int timestamp = poll.getKey();
+            pqDecrease.add(new Pair<>(timestamp, records.get(timestamp)));
+        }
+        return pqDecrease.peek().getValue();
+    }
+}
+```
+
+
+
+# Sorting
+
+## [2713. Maximum Strictly Increasing Cells in a Matrix](https://leetcode.com/problems/maximum-strictly-increasing-cells-in-a-matrix/)
+
+`dp[i][j]` means the maximum steps can go from the first cell.
+
+Initalize all `dp[i][j] = 0` at first, then set the smallest cells (There can be more than one cells with same value) `dp[i][j] = 1`
+
+The rule of moving is from a smaller one to a larger one, so there is a **special case** - several cells with the same value. I firstly using PriorityQueue structure, and it cannot resolve this special case. Therefore, TreeMap structure - `TreeMap<Integer, List<Pair<Integer, Integer>>>` can handle this.
+
+Sort pairs `[i, j]` by value of `M[i][j]`, and then iterate cells in increasing order. For each `M[i][j]`, find out the current maximum steps in the same row and col, `dp[i][j] = max(max steps in row, max steps in col) + 1`.
+
+```java
+// 2713. Maximum Strictly Increasing Cells in a Matrix
+public class MaximumStrictlyIncreasingCellsInAMatrix {
+    int n, m;
+    public int maxIncreasingCells(int[][] mat) {
+        TreeMap<Integer, List<Pair<Integer, Integer>>> treeMap = new TreeMap<>();
+        m = mat.length;
+        n = mat[0].length;
+        int[][] dp = new int[m][n];
+        int[] max_steps_for_row = new int[m];
+        int[] max_steps_for_col = new int[n];
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (!treeMap.containsKey(mat[i][j])) {
+                    List<Pair<Integer, Integer>> list = new ArrayList<>();
+                    list.add(new Pair<>(i, j));
+                    treeMap.put(mat[i][j], list);
+                } else {
+                    List<Pair<Integer, Integer>> pairs = treeMap.get(mat[i][j]);
+                    pairs.add(new Pair<>(i, j));
+                }
+            }
+        }
+        List<Pair<Integer, Integer>> smallest_pairs = treeMap.firstEntry().getValue();
+        for (Pair<Integer, Integer> smallestPair : smallest_pairs) {
+            int row = smallestPair.getKey();
+            int col = smallestPair.getValue();
+            dp[row][col] = 1;
+            max_steps_for_row[row] = 1;
+            max_steps_for_col[col] = 1;
+        }
+        treeMap.remove(treeMap.firstKey());
+        int res = 1;
+        for (Map.Entry<Integer, List<Pair<Integer, Integer>>> entry : treeMap.entrySet()) {
+            List<Pair<Integer, Integer>> coordinates = entry.getValue();
+            for (Pair<Integer, Integer> coordinate : coordinates) {
+                int cur_row = coordinate.getKey();
+                int cur_col = coordinate.getValue();
+                dp[cur_row][cur_col] = Math.max(max_steps_for_row[cur_row], max_steps_for_col[cur_col]) + 1;
+            }
+            for (Pair<Integer, Integer> coordinate : coordinates) {
+                int cur_row = coordinate.getKey();
+                int cur_col = coordinate.getValue();
+                max_steps_for_row[cur_row] = Math.max(max_steps_for_row[cur_row], dp[cur_row][cur_col]);
+                max_steps_for_col[cur_col] = Math.max(max_steps_for_col[cur_col], dp[cur_row][cur_col]);
+                res = Math.max(res, max_steps_for_row[cur_row]);
+                res = Math.max(res, max_steps_for_col[cur_col]);
+            }
+        }
+        return res;
+    }
+}
+```
+
+
+
+
+
+# Multi-Set
+
+## [1825. Finding MK Average](https://leetcode.com/problems/finding-mk-average/)
+
+ Three sorted Map - maintain the first $k$ elements of the array, the last $k$ elements of the array, and the middle part of the array.
+
+```java
+public class MKAverage {
+    int m, k;
+    int n_last, n_first;
+    int middleSum;
+    Queue<Integer> queue;
+    TreeMap<Integer, Integer> top = new TreeMap<>(), middle = new TreeMap<>(), bottom = new TreeMap<>();
+    public MKAverage(int m, int k) {
+        this.m = m;
+        this.k = k;
+        this.n_last = 0;
+        this.n_first = 0;
+        this.middleSum = 0;
+        this.queue = new LinkedList<>();
+    }
+
+    public void addElement(int num) {
+        if (queue.size() == m) {
+            int pop = queue.poll();
+            // since we don't know the exact position of the pop element, it can be at multiple maps, we can handle it later, just delete any one of them.
+            if (top.containsKey(pop)) {
+                removeOneElementFromMap(top, pop);
+                n_last--;
+            } else if (middle.containsKey(pop)) {
+                removeOneElementFromMap(middle, pop);
+                middleSum -= pop;
+            } else if (bottom.containsKey(pop)) {
+                removeOneElementFromMap(bottom, pop);
+                n_first--;
+            }
+        }
+        queue.add(num);
+        addOneElementToMap(middle, num);
+        middleSum += num;
+        while (n_last < k && !middle.isEmpty()) {
+            int biggest_in_middle = middle.lastKey();
+            removeOneElementFromMap(middle, biggest_in_middle);
+            middleSum -= biggest_in_middle;
+            addOneElementToMap(top, biggest_in_middle);
+            n_last++;
+        }
+        while (!middle.isEmpty() && !top.isEmpty() && top.firstKey() < middle.lastKey()) {
+            int top_first = top.firstKey();
+            int middle_last = middle.lastKey();
+            middleSum = middleSum + top_first - middle_last;
+            addOneElementToMap(middle, top_first);
+            addOneElementToMap(top, middle_last);
+            removeOneElementFromMap(middle, middle_last);
+            removeOneElementFromMap(top, top_first);
+        }
+        while (n_first < k && !middle.isEmpty()) {
+            int smallest_in_middle = middle.firstKey();
+            removeOneElementFromMap(middle, smallest_in_middle);
+            middleSum -= smallest_in_middle;
+            addOneElementToMap(bottom, smallest_in_middle);
+            n_first++;
+        }
+        while (!middle.isEmpty() && !bottom.isEmpty() && bottom.lastKey() > middle.firstKey()) {
+            int bottom_last = bottom.lastKey();
+            int middle_first = middle.firstKey();
+            middleSum = middleSum + bottom_last - middle_first;
+            addOneElementToMap(middle, bottom_last);
+            addOneElementToMap(bottom, middle_first);
+            removeOneElementFromMap(middle, middle_first);
+            removeOneElementFromMap(bottom, bottom_last);
+        }
+    }
+
+    private void addOneElementToMap(TreeMap<Integer, Integer> treeMap, int num) {
+        treeMap.put(num, treeMap.getOrDefault(num, 0) + 1);
+    }
+
+    private void removeOneElementFromMap(TreeMap<Integer, Integer> treeMap, int pop) {
+        int n_pop = treeMap.get(pop);
+        if (n_pop - 1 == 0) {
+            treeMap.remove(pop);
+        } else treeMap.put(pop, n_pop - 1);
+    }
+
+    public int calculateMKAverage() {
+        return queue.size() == m ? middleSum / (m - 2 * k) : -1;
+    }
+}
+```
+
+
+
 # Topological Sort
 
 ## [0207. 课程表](https://leetcode.cn/problems/course-schedule/)
@@ -12625,12 +13543,6 @@ public int minimumSemesters(int n, int[][] relations) {
 ```
 
 本题和前三题的解题框架一模一样，就不细讲了
-
-
-
-
-
-
 
 
 
@@ -13548,22 +14460,43 @@ private int findGCD(int pre, int cur) {
 
 ```java
 public class Template {
-    int[] father;
-    int findFather(int x) {
-        if (father[x] != x) {
-            father[x] = findFather(father[x]);
+    int[] parent;
+    int n;
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
         }
-        return father[x];
+        return parent[x];
     }
 
     void union(int x, int y) {
-        x = father[x];
-        y = father[y];
+        x = parent[x];
+        y = parent[y];
         if (x < y) {
-            father[y] = x;
+            parent[y] = x;
         } else {
-            father[x] = y;
+            parent[x] = y;
         }
+    }
+    
+    void initParent() {
+        parent = new int[n];
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+        }
+    }
+
+    Map<Integer, Set<Integer>> getComponents() {
+        Map<Integer, Set<Integer>> components = new HashMap<>();
+        for (int i = 0; i < parent.length; i++) {
+            parent[i] = find(i);
+        }
+        for (int i = 0; i < parent.length; i++) {
+            Set<Integer> set = components.getOrDefault(parent[i], new HashSet<>());
+            set.add(i);
+            components.put(parent[i], set);
+        }
+        return components;
     }
 }
 ```
@@ -13988,99 +14921,82 @@ public class Solution4 {
 
 
 
-## [2421. 好路径的数目](https://leetcode.cn/problems/number-of-good-paths/)
+## [2421. Number of Good Paths](https://leetcode.com/problems/number-of-good-paths/)
 
 ![image-20221109143135666](https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/image-20221109143135666.png)
 
 ```java
-//2421. 好路径的数目
-public class Solution5 {
-    int[] father;
-    //由于本题是路径描述的是一棵树，所以我们默认从上往下，也就是节点小的在前，Map的key就是节点的val，存放所有以val大的节点打头，另一个端点是val小的节点所构成的路径
-    Map<Integer, List<Pair<Integer, Integer>>> e;
+public class NumberOfGoodPaths {
+    int[] parent;
+    int n;
 
-    int findFather(int x) {
-        if (father[x] != x) {
-            father[x] = findFather(father[x]);
+    void initParent() {
+        parent = new int[n];
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
         }
-        return father[x];
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
     }
 
     void union(int x, int y) {
-        x = father[x];
-        y = father[y];
+        x = parent[x];
+        y = parent[y];
         if (x < y) {
-            father[y] = x;
+            parent[y] = x;
         } else {
-            father[x] = y;
+            parent[x] = y;
         }
     }
 
     public int numberOfGoodPaths(int[] vals, int[][] edges) {
-        int length = vals.length;
-        father = new int[length];
-        for (int i = 0; i < length; i++) {
-            father[i] = i;
-        }
-        e = new HashMap<>();
-        //遍历所有的边，用e来记录
-        for (int[] edge : edges) {
-            int a = edge[0], b = edge[1];
-            //始终记录val大的节点，边信息记录从大端到小端，一层层剥进去
-            if (vals[a] < vals[b]) {
-                int temp = a;
-                a = b;
-                b = temp;
-            }
-            List<Pair<Integer, Integer>> list = e.getOrDefault(vals[a], new ArrayList<>());
-            list.add(new Pair<>(a, b));
-            e.put(vals[a], list);
-        }
-        //val2idx把所有val相同的节点存到一起
-        Map<Integer, List<Integer>> val2idx = new HashMap<>();
-        //valSet记录所有出现过的val值
-        Set<Integer> valSet = new TreeSet<>();
-        for (int i = 0; i < length; i++) {
-            valSet.add(vals[i]);
-            List<Integer> list = val2idx.getOrDefault(vals[i], new ArrayList<>());
+        n = vals.length;
+        initParent();
+        TreeMap<Integer, List<Integer>> nodeWithValues = new TreeMap<>((o1, o2) -> o1 - o2);
+        Map<Integer, List<Integer>> adjacencyTable = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            List<Integer> list = nodeWithValues.getOrDefault(vals[i], new ArrayList<>());
             list.add(i);
-            val2idx.put(vals[i], list);
+            nodeWithValues.put(vals[i], list);
         }
-        int ret = 0;
-        for (Integer val : valSet) {
-            List<Pair<Integer, Integer>> list = e.getOrDefault(val, new ArrayList<>());
-            for (Pair<Integer, Integer> pair : list) {
-                Integer a = pair.getKey();
-                Integer b = pair.getValue();
-                if (findFather(a) != findFather(b)) {
-                    union(a, b);
+        for (int[] edge : edges) {
+            int v1 = edge[0];
+            int v2 = edge[1];
+            if (vals[v1] >= vals[v2]) {
+                List<Integer> list = adjacencyTable.getOrDefault(v1, new ArrayList<>());
+                list.add(v2);
+                adjacencyTable.put(v1, list);
+            } else {
+                List<Integer> list = adjacencyTable.getOrDefault(v2, new ArrayList<>());
+                list.add(v1);
+                adjacencyTable.put(v2, list);
+            }
+        }
+        int res = 0;
+        for (Map.Entry<Integer, List<Integer>> nodeWithValue : nodeWithValues.entrySet()) {
+            List<Integer> nodes = nodeWithValue.getValue();
+            for (Integer node : nodes) {
+                List<Integer> neighbours = adjacencyTable.getOrDefault(node, new ArrayList<>());
+                for (Integer neighbour : neighbours) {
+                    union(node, neighbour);
                 }
             }
-            //countMap用来记录所有的连通域
-            Map<Integer, Integer> countMap = new HashMap<>();
-            List<Integer> val2idxList = val2idx.getOrDefault(val, new ArrayList<>());
-            for (Integer node : val2idxList) {
-                //root就是每个连通区域的编号
-                int root = findFather(node);
-                Integer count = countMap.getOrDefault(root, 0);
-                count++;
-                countMap.put(root, count);
+            res += nodes.size(); // Single length path of each node
+            HashMap<Integer, Integer> components = new HashMap<>();
+            for (Integer node : nodes) {
+                components.put(find(node), components.getOrDefault(find(node), 0) + 1);
             }
-            Iterator<Map.Entry<Integer, Integer>> iterator = countMap.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<Integer, Integer> next = iterator.next();
-                int freq = next.getValue();
-                ret += freq * (freq - 1) / 2;
+            for (Map.Entry<Integer, Integer> component : components.entrySet()) {
+                int size = component.getValue();
+                res += size * (size - 1) / 2; // Based on the connected graph, this iteration add several nodes into the graph. For each iteration and for each connected component, if only one node is connected to one conponent, there will be no new path (Start and end with the same value). If two nodes are connected to one component, then there will be only one new path. If three nodes are connected to one component, then there will be 3 new path. The equation is size * (size - 1) / 2.
             }
         }
-        return ret + length;
-    }
-
-    public static void main(String[] args) {
-        int[] i1 = new int[]{1, 3, 2, 1, 3};
-        int[][] i2 = new int[][]{{0, 1}, {0, 2}, {2, 3}, {2, 4}};
-        Solution5 s = new Solution5();
-        System.out.println(s.numberOfGoodPaths(i1, i2));
+        return res;
     }
 }
 ```
@@ -14337,7 +15253,159 @@ public boolean gcdSort(int[] nums) {
 
 
 
+## [2812. Find the Safest Path in a Grid](https://leetcode.com/problems/find-the-safest-path-in-a-grid/)
 
+```java
+public class FindTheSafestPathInAGrid {
+    int[][] direction_dict = new int[][]{{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+    int INF = Integer.MAX_VALUE / 2;
+    int n;
+    int[] parent;
+    int[] setSize;
+
+    public int maximumSafenessFactor(List<List<Integer>> grid) {
+        n = grid.size();
+        if (grid.get(0).get(0) == 1 || grid.get(n - 1).get(n - 1) == 1) return 0;
+        Queue<int[]> pathQueue = new LinkedList<>();
+        int[][] weights = new int[n][n];
+        for (int[] a : weights) {
+            Arrays.fill(a, INF);
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid.get(i).get(j) == 1) {
+                    pathQueue.add(new int[]{i, j});
+                    weights[i][j] = 0;
+                }
+            }
+        }
+        bfs(n, pathQueue, weights); // bfs to update the minimum safeness factor for each vertex according to all the robbers
+        return binarySearch(0, n, weights); // Find maximum safeness factor from 0 to n - 1, using binarySearch
+    }
+
+    private int binarySearch(int start, int end, int[][] weights) {
+        int left = start, right = end;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (isOK(mid, weights)) { // using disjoint set to store the connected graph info, and can easily check connectivity
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+        return right;
+    }
+
+    private boolean isOK(int safeness, int[][] weights) {
+        parent = IntStream.range(0, n * n).toArray();
+        setSize = new int[n * n];
+        Arrays.fill(setSize, 1);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (weights[i][j] < safeness) continue;
+                for (int[] direction : direction_dict) {
+                    int row_move = direction[0];
+                    int col_move = direction[1];
+                    int new_row = i + row_move;
+                    int new_col = j + col_move;
+                    if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < n && find(i * n + j) != find(new_row * n + new_col) && weights[new_row][new_col] >= safeness) {
+                        union(i * n + j, new_row * n + new_col);
+                    }
+                }
+            }
+        }
+        return connected(0, n * n - 1);
+    }
+
+    private void bfs(int n, Queue<int[]> pathQueue, int[][] weights) {
+        while (!pathQueue.isEmpty()) {
+            int[] poll = pathQueue.poll();
+            int row = poll[0];
+            int col = poll[1];
+            for (int[] direction : direction_dict) {
+                int row_move = direction[0];
+                int col_move = direction[1];
+                int new_row = row + row_move;
+                int new_col = col + col_move;
+                if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < n && weights[new_row][new_col] == this.INF) {
+                    weights[new_row][new_col] = weights[row][col] + 1;
+                    pathQueue.add(new int[]{new_row, new_col});
+                }
+            }
+        }
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    void union(int x, int y) {
+        int x_parent = find(x);
+        int y_parent = find(y);
+        if (setSize[x_parent] < setSize[y_parent]) {
+            setSize[y_parent] += setSize[x_parent];
+            parent[x_parent] = y_parent;
+        } else {
+            setSize[x_parent] += setSize[y_parent];
+            parent[y_parent] = x_parent;
+        }
+    }
+
+    boolean connected(int x, int y) {
+        return find(x) == find(y);
+    }
+}
+```
+
+
+
+## [1101. The Earliest Moment When Everyone Become Friends](https://leetcode.com/problems/the-earliest-moment-when-everyone-become-friends/)
+
+```java
+public class TheEarliestMomentWhenEveryoneBecomeFriends {
+    int[] parent;
+
+    public int earliestAcq(int[][] logs, int n) {
+        parent = new int[n];
+        for (int i = 0; i < parent.length; i++) {
+            parent[i] = i;
+        }
+        Arrays.sort(logs, (o1, o2) -> o1[0] - o2[0]);
+        int n_unionized = 0;
+        for (int[] log : logs) {
+            int timestamp = log[0];
+            int x = log[1];
+            int y = log[2];
+            if (find(x) != find(y)) {
+                union(x, y);
+                n_unionized++;
+            }
+            if (n_unionized == n - 1) return timestamp;
+        }
+        return -1;
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    void union(int x, int y) {
+        x = parent[x];
+        y = parent[y];
+        if (x < y) {
+            parent[y] = x;
+        } else {
+            parent[x] = y;
+        }
+    }
+}
+```
 
 
 
@@ -15069,6 +16137,8 @@ private int binarySearch(int start, int end, List<Integer> usageLimits) {
     }
 }
 ```
+
+
 
 
 
@@ -17539,592 +18609,3 @@ private int binarySearchRight2(long[] sorted, lont target, int start, int end) {
     return right;
 }
 ```
-
-
-
-
-
-
-
-# Stable Matching
-
-```typescript
-import "./styles.css";
-import axios from 'axios';
-import React, { useState, useEffect } from 'react'
-
-interface Todo {
-  userId: number;
-  id: number;
-  title: string;
-  completed: boolean;
-}
-
-export default function App() {
-  const [filteredTodos, setFilteredTodos] = useState<Todo[]>([]);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [searchField, setSearchField] = useState<string>("");
-  console.log(searchField);
-  useEffect(() => {
-    axios.get('https://jsonplaceholder.typicode.com/todos?_limit=10&_sort=id&_order=desc')
-      .then(response => {
-        setTodos(response.data);
-      })
-      .catch(error => {
-        console.log(error);
-      });
-  }, []);
-
-  const searchFieldHandler = (event:React.ChangeEvent<HTMLInputElement>) => {
-    setSearchField(event.target.value.toLowerCase())
-  }
-
-  useEffect(() => {
-    const newFilteredTodos = todos.filter((todo) => {return todo.title.toLowerCase().includes(searchField)})
-    setFilteredTodos(newFilteredTodos)
-  }, [todos, searchField])
-  
-  return (
-    <div className="App">
-      <input type="search" onChange={searchFieldHandler}/>
-      <ul>
-        {filteredTodos.map((filteredTodo) => (
-          <li key={filteredTodo.id}>
-            <ul>
-              <li>id:{filteredTodo.id}</li>
-              <li>UserId:{filteredTodo.userId}</li>
-              <li>title:{filteredTodo.title}</li>
-              <li>completed:{filteredTodo.completed ? "yes" : "no"}</li>
-            </ul>
-          </li>
-        ))}
-      </ul>
-      
-    </div>
-  );
-}
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# LeetCode Weekly Contests
-
-## 308
-
-### [6160. 和有限的最长子序列](https://leetcode.cn/problems/longest-subsequence-with-limited-sum/)
-
-```java
-public int[] answerQueries(int[] nums, int[] queries) {
-    Arrays.sort(nums);
-    int[] ans = new int[queries.length];
-    for (int i = 0; i < queries.length; i++) {
-        int sum = 0;
-        int index = 0;
-        while (index < nums.length && sum <= queries[i]) {
-            sum += nums[index];
-            index++;
-        }
-        if (sum <= queries[i]) {
-            ans[i] = index;
-        } else {
-            ans[i] = index - 1;
-        }
-    }
-    return ans;
-}
-```
-
-### [6161. 从字符串中移除星号](https://leetcode.cn/problems/removing-stars-from-a-string/)
-
-```java
-public String removeStars(String s) {
-    StringBuilder sb = new StringBuilder(s);
-    int index = 0;
-    while (index < sb.length()) {
-        if (sb.charAt(index) == '*') {
-            sb.delete(index - 1, index + 1);
-            index -= 2;
-            if (index < 0) {
-                index = 0;
-            }
-        }
-        index++;
-    }
-    return sb.toString();
-}
-```
-
-### [6162. 收集垃圾的最少总时间](https://leetcode.cn/problems/minimum-amount-of-time-to-collect-garbage/)
-
-```java
-public int garbageCollection(String[] garbage, int[] travel) {
-    int[] consume = new int[3];
-    int m = 0, p = 0, g = 0;
-    int distant = 0;
-    int index = 0;
-    for (String each : garbage) {
-        distant += (index == 0 ? 0 : travel[index - 1]);
-        for (int i = 0; i < each.length(); i++) {
-            char c = each.charAt(i);
-            if (c == 'M') {
-                consume[0]++;
-                m = distant;
-            }
-            if (c == 'P') {
-                consume[1]++;
-                p = distant;
-            }
-            if (c == 'G') {
-                consume[2]++;
-                g = distant;
-            }
-        }
-        index++;
-    }
-    return consume[0] + consume[1] + consume[2] + m + p + g;
-}
-```
-
-### [6163. 给定条件下构造矩阵](https://leetcode.cn/problems/build-a-matrix-with-conditions/)
-
-看到题目我就想到了[0207. 课程表](https://leetcode.cn/problems/course-schedule/)，利用入度表来把所有的数字进行一个排序
-
-```java
-public int[][] buildMatrix(int k, int[][] rowConditions, int[][] colConditions) {
-    int[] rowInDegree = new int[k + 1];
-    int[] colInDegree = new int[k + 1];
-    Map<Integer, List<Integer>> mapRow = new HashMap<>();
-    Map<Integer, List<Integer>> mapCol = new HashMap<>();
-    for (int i = 0; i < rowConditions.length; i++) {
-        rowInDegree[rowConditions[i][0]]++;
-        Integer preNum = rowConditions[i][1];
-        Integer curNum = rowConditions[i][0];
-        List<Integer> list = mapRow.getOrDefault(preNum, new ArrayList<>());
-        list.add(curNum);
-        mapRow.put(preNum, list);
-    }
-    for (int i = 0; i < colConditions.length; i++) {
-        colInDegree[colConditions[i][0]]++;
-        Integer preNum = colConditions[i][1];
-        Integer curNum = colConditions[i][0];
-        List<Integer> list = mapCol.getOrDefault(preNum, new ArrayList<>());
-        list.add(curNum);
-        mapCol.put(preNum, list);
-    }
-    Deque<Integer> dequeRow = new LinkedList<>();
-    for (int i = 1; i < rowInDegree.length; i++) {
-        if (rowInDegree[i] == 0) {
-            dequeRow.addLast(i);
-        }
-    }
-    int[] rowOrder = new int[k + 1];
-    int orderR = 1;
-    while (!dequeRow.isEmpty()) {
-        Integer pre = dequeRow.pollFirst();
-        rowOrder[pre] = orderR;
-        orderR++;
-        List<Integer> curList = mapRow.containsKey(pre) ? mapRow.get(pre) : new ArrayList<>();
-        for (Integer cNum : curList) {
-            if (--rowInDegree[cNum] == 0) {
-                dequeRow.addLast(cNum);
-            }
-        }
-    }
-    for (int i : rowInDegree) {
-        if (i != 0) {
-            return new int[1][0];
-        }
-    }
-    Deque<Integer> dequeCol = new LinkedList<>();
-    for (int i = 1; i < colInDegree.length; i++) {
-        if (colInDegree[i] == 0) {
-            dequeCol.addLast(i);
-        }
-    }
-    int[] colOrder = new int[k + 1];
-    int orderC = 1;
-    while (!dequeCol.isEmpty()) {
-        Integer pre = dequeCol.pollFirst();
-        colOrder[pre] = orderC;
-        orderC++;
-        List<Integer> curList = mapCol.containsKey(pre) ? mapCol.get(pre) : new ArrayList<>();
-        for (Integer cNum : curList) {
-            if (--colInDegree[cNum] == 0) {
-                dequeCol.addLast(cNum);
-            }
-        }
-    }
-    for (int i : colInDegree) {
-        if (i != 0) {
-            return new int[1][0];
-        }
-    }
-    int[][] ans = new int[k][k];
-    for (int i = 1; i <= k; i++) {
-        int rowIndex, colIndex;
-        if (rowOrder[i] != 0) {
-            rowIndex = (k - 1) - (rowOrder[i] - 1);
-        } else {
-            rowIndex = ++orderR - 1;
-        }
-        if (colOrder[i] != 0) {
-            colIndex = (k - 1) - (colOrder[i] - 1);
-        } else {
-            colIndex = ++orderC - 1;
-        }
-        ans[rowIndex][colIndex] = i;
-    }
-    return ans;
-}
-```
-
-
-
-
-
-
-
-
-
-## 309
-
-### [6167. 检查相同字母间的距离](https://leetcode.cn/problems/check-distances-between-same-letters/)
-
-```java
-public boolean checkDistances(String s, int[] distance) {
-    Map<Character, Integer> map = new HashMap<>();
-    for (int i = 0; i < s.length(); i++) {
-        char c = s.charAt(i);
-        if (!map.containsKey(c)) {
-            map.put(c, i);
-        } else {
-            Integer first = map.get(c);
-            int index = c - 'a';
-            if (distance[index] != i - first - 1) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-```
-
-
-
-
-
-
-
-
-
-### [6168. 恰好移动 k 步到达某一位置的方法数目](https://leetcode.cn/problems/number-of-ways-to-reach-a-position-after-exactly-k-steps/)
-
-```java
-int ways = 0;
-public int numberOfWays(int startPos, int endPos, int k) {
-    checkWays(startPos, endPos, k);
-    return ways;
-}
-
-private void checkWays(int curPos, int endPos, int k) {
-    if (curPos == endPos && k == 0) {
-        ways++;
-    }
-    if (Math.abs(endPos - curPos) > k) {
-        return;
-    }
-    checkWays(curPos + 1, endPos, k - 1);
-    checkWays(curPos - 1, endPos, k - 1);
-}
-```
-
-首先尝试了递归，但是超时，本题使用递归还要加入记忆化搜索，具体想法就是利用map以==当前curPos和剩余步数k==组成标签的key，存入value为在此时的组合数
-
-```java
-int MOD = (int) 1e9 + 7;
-Map<Integer, Long> map = new HashMap<>();
-public int numberOfWays(int startPos, int endPos, int k) {
-    return (int) checkWays(startPos, endPos, k);
-}
-
-private long checkWays(int curPos, int endPos, int k) {
-    if (curPos == endPos && k == 0) {
-        return 1;
-    }
-    if (Math.abs(endPos - curPos) > k) {
-        return 0;
-    }
-    int key = curPos * 1000 + k;//因为k<=1000，所以利用curPos*1000一定可以生成不同的key来区分不同的curPos+k的组合
-    if (map.containsKey(key)) {
-        return map.get(key);
-    }
-    long value = (checkWays(curPos + 1, endPos, k - 1) + checkWays(curPos - 1, endPos, k - 1)) % MOD;
-    map.put(key, value);
-    return value;
-}
-```
-
-加入记忆化搜索之后，该题将少走很多步骤
-
-
-
-
-
-### [6169. 最长优雅子数组](https://leetcode.cn/problems/longest-nice-subarray/)
-
-```java
-int[] cnt = new int[32];
-public int longestNiceSubarray(int[] nums) {
-    int left = 0, right = 0, max = 1;
-    while (right < nums.length) {
-        int num = nums[right];
-        String s = Integer.toBinaryString(num);
-        if (checkCnt(s)) {
-            for (int i = s.length() - 1; i >= 0; i--) {
-                if (s.charAt(i) == '1') {
-                    cnt[s.length() - 1 - i] = 1;
-                }
-            }
-            max = Math.max(max, right - left + 1);
-            right++;
-        } else {
-            while (!checkCnt(s)) {
-                int num1 = nums[left];
-                String s1 = Integer.toBinaryString(num1);
-                for (int i = s1.length() - 1; i >= 0; i--) {
-                    if (s1.charAt(i) == '1') {
-                        cnt[s1.length() - 1 - i] = 0;
-                    }
-                }
-                left++;
-            }
-        }
-    }
-    return max;
-}
-
-private Boolean checkCnt(String s) {
-    for (int i = s.length() - 1; i >= 0; i--) {
-        if (s.charAt(i) == '1' && cnt[s.length() - 1 - i] == 1) {
-            return false;
-        }
-    }
-    return true;
-}
-```
-
-该题需要吸收一下与&运算：
-
-<img src="https://raw.githubusercontent.com/Prom1s1ngYoung/cloudImg/main/leetcode/image-20220904184909480.png" alt="image-20220904184909480" style="zoom:50%;" />
-
-如果想要两个数做与运算之后为0，那么就是说明在二进制状态下，每一位都只能有至多一个'1'
-
-
-
-
-
-### [6170. 会议室 III](https://leetcode.cn/problems/meeting-rooms-iii/)
-
-```java
-public int mostBooked(int n, int[][] meetings) {
-    int[] useTimes = new int[n];
-    int max = 0;
-    int maxNumber = 0;
-    PriorityQueue<Integer> zoomQueue = new PriorityQueue<>(100, new Comparator<Integer>() {
-        @Override
-        public int compare(Integer o1, Integer o2) {
-            return o1 - o2;
-        }
-    });
-    Arrays.sort(meetings, new Comparator<int[]>(){
-        @Override
-        public int compare(int[] o1, int[] o2) {
-            if (o1[0] == o2[0]) {
-                return o1[1] - o2[1];
-            }
-            return o1[0] - o2[0];
-        }
-    });
-    PriorityQueue<int[]> meetingQueue = new PriorityQueue<>(100, new Comparator<int[]>() {
-        @Override
-        public int compare(int[] o1, int[] o2) {
-            return o1[0] - o2[0];
-        }
-    });
-    for (int i = 0; i < n; i++) {
-        zoomQueue.offer(i);
-    }
-    for (int i = 0; i < meetings.length; i++) {
-        while (!meetingQueue.isEmpty()) {
-            int startTime = meetings[i][0];
-            int[] peek = meetingQueue.peek();
-            if (peek[0] > startTime) {
-                break;
-            }
-            zoomQueue.offer(peek[1]);
-            meetingQueue.poll();
-        }
-        if (zoomQueue.isEmpty()) {
-            int[] poll = meetingQueue.poll();
-            if (poll[0] > meetings[i][0]) {
-                meetings[i][1] = meetings[i][1] - meetings[i][0] + poll[0];
-            }
-            zoomQueue.offer(poll[1]);
-        }
-        Integer zoomNumber = zoomQueue.poll();
-        int[] meeting = new int[2];
-        meeting[0] = meetings[i][1];
-        meeting[1] = zoomNumber;
-        useTimes[zoomNumber]++;
-        if (max == useTimes[zoomNumber]) {
-            maxNumber = Math.min(maxNumber, zoomNumber);
-        } else {
-            maxNumber = max > useTimes[zoomNumber] ? maxNumber : zoomNumber;
-        }
-        max = Math.max(max, useTimes[zoomNumber]);
-        meetingQueue.offer(meeting);
-    }
-    return maxNumber;
-}
-```
-
-该解法最后两个用例不通过，原因是爆int了，要把meetings优先队列的存储方式换成Pair<Long, Interger>
-
-参考一下别人的写法：
-
-```java
-public int mostBooked2(int n, int[][] meetings) {
-    int[] cnt = new int[n];
-    PriorityQueue<Integer> idle = new PriorityQueue<Integer>((a, b) -> Integer.compare(a, b));
-    for (int i = 0; i < n; ++i) idle.offer(i);
-    PriorityQueue<Pair<Long, Integer>> using = new PriorityQueue<Pair<Long, Integer>>((a, b) -> !Objects.equals(a.getKey(), b.getKey()) ? Long.compare(a.getKey(), b.getKey()) : Integer.compare(a.getValue(), b.getValue()));
-    Arrays.sort(meetings, (a, b) -> Integer.compare(a[0], b[0]));
-    for (int[] m : meetings) {
-        long st = m[0], end = m[1];
-        while (!using.isEmpty() && using.peek().getKey() <= st) {
-            idle.offer(using.poll().getValue()); // 维护在 st 时刻空闲的会议室
-        }
-        int id;
-        if (idle.isEmpty()) {
-            Pair<Long, Integer> p = using.poll();// 没有可用的会议室，那么弹出一个最早结束的会议室
-            end += p.getKey() - st; // 更新当前会议的结束时间
-            id = p.getValue();
-        } else id = idle.poll();
-        ++cnt[id];
-        using.offer(new Pair<>(end, id)); // 使用一个会议室
-    }
-    int ans = 0;
-    for (int i = 0; i < n; ++i) if (cnt[i] > cnt[ans]) ans = i;
-    return ans;
-}
-```
-
-
-
-
-
-
-
-
-
-## 310
-
-### [6176. 出现最频繁的偶数元素](https://leetcode.cn/problems/most-frequent-even-element/)
-
-```java
-public int mostFrequentEven(int[] nums) {
-    Map<Integer, Integer> map = new HashMap<>();
-    int max = 0;
-    int maxN = -1;
-    for (int num : nums) {
-        if (num % 2 == 0) {
-            map.put(num, map.getOrDefault(num, 0) + 1);
-            Integer amount = map.get(num);
-            if (amount > max) {
-                max = amount;
-                maxN = num;
-            } else if (amount == max) {
-                maxN = Math.min(maxN, num);
-            }
-        }
-    }
-    return maxN;
-}
-```
-
-
-
-### [6177. 子字符串的最优划分](https://leetcode.cn/problems/optimal-partition-of-string/)
-
-```java
-public int partitionString(String s) {
-    int left = 0, right = 0;
-    int spiltN = 0;
-    Set<Character> set = new HashSet<>();
-    while (right < s.length()) {
-        if (!set.contains(s.charAt(right))) {
-            set.add(s.charAt(right));
-            right++;
-        }else {
-            set = new HashSet<>();
-            spiltN++;
-        }
-    }
-    if (!set.isEmpty()) spiltN++;
-    return spiltN;
-}
-```
-
-
-
-### [6178. 将区间分为最少组数](https://leetcode.cn/problems/divide-intervals-into-minimum-number-of-groups/)
-
-```java
-public int minGroups(int[][] intervals) {
-    Arrays.sort(intervals, new Comparator<int[]>() {
-        @Override
-        public int compare(int[] o1, int[] o2) {
-            if (o1[0] == o2[0]) {
-                return o1[1] -o2[1];
-            }
-            return o1[0] - o2[0];
-        }
-    });
-    PriorityQueue<Integer> queue = new PriorityQueue<>();
-    for (int[] interval : intervals) {
-        int end = interval[1];
-        if (!queue.isEmpty() && queue.peek() < interval[0]) queue.poll();
-        queue.offer(end);
-    }
-    return queue.size();
-}
-```
-
-首先将输入数组按照start的时间先后进行排序，本题我们利用最小堆来维护多个**组**的end，存入最小堆中的对应实体就是一个个组的右区间，这些值会被动态更新，堆的大小实际就是当前已经划分出来的组数
-
-1. 堆顶元素，就是当前所有组中拥有最小右边界的组，因此新的元素会不会和已有组有相交，首先去看堆顶元素
-   1. 如果此时遍历到的interval的start大于堆顶元素，即`queue.peek() < interval[0]`，该组就应该被动态更新了，其右边界应该变为`interval[0]`，并且堆顶元素出队
-   2. 如果此时遍历到的interval的start小于堆顶元素，那么就说明需要新开一个组来存放该元素了，直接入队
-2. 因为用的最小堆，所以如果interval的start小于堆顶元素，那么它一定小于之后的所有元素
-
-
-
